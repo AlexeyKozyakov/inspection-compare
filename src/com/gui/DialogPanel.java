@@ -1,4 +1,4 @@
-package gui;
+package com.gui;
 
 import com.intellij.uiDesigner.core.Spacer;
 
@@ -31,6 +31,26 @@ public class DialogPanel extends JPanel {
         add(removedWarnings);
         setLayout(new GridLayout(10, 1));
         setPreferredSize(new Dimension(800, 600));
+    }
+
+    public String getBaseAsStr() {
+        return baseline.getText();
+    }
+
+    public String getUpdatedAsStr() {
+        return updated.getText();
+    }
+
+    public String getFilterAsStr() {
+        return filter.getText();
+    }
+
+    public String getAddedWarningsAsStr() {
+        return addedWarnings.getText();
+    }
+
+    public String getRemovedWarningsAsStr() {
+        return removedWarnings.getText();
     }
 
 }
