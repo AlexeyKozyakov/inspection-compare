@@ -10,6 +10,7 @@ import javax.swing.*;
 
 public class DiffDialog extends DialogWrapper {
     private DialogPanel dialogPanel = new DialogPanel();
+    private RunAction runAction = new RunAction();
     protected DiffDialog(@Nullable Project project, boolean canBeParent) {
         super(project, canBeParent);
         init();
@@ -25,6 +26,10 @@ public class DiffDialog extends DialogWrapper {
     @NotNull
     @Override
     protected Action[] createActions() {
-        return super.createActions();
+        return new Action[] {getRunAction(), getCancelAction()};
+    }
+
+    public RunAction getRunAction() {
+        return runAction;
     }
 }
