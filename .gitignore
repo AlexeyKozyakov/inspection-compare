@@ -32,7 +32,7 @@
 # CMake
 cmake-build-*/
 
-# Mongo Explorer plugin
+# Mongo Explorer com
 .idea/**/mongoSettings.xml
 
 # File-based project format
@@ -41,16 +41,16 @@ cmake-build-*/
 # IntelliJ
 out/
 
-# mpeltonen/sbt-idea plugin
+# mpeltonen/sbt-idea com
 .idea_modules/
 
-# JIRA plugin
-atlassian-ide-plugin.xml
+# JIRA com
+atlassian-ide-com.xml
 
-# Cursive Clojure plugin
+# Cursive Clojure com
 .idea/replstate.xml
 
-# Crashlytics plugin (for Android Studio and IntelliJ)
+# Crashlytics com (for Android Studio and IntelliJ)
 com_crashlytics_export_strings.xml
 crashlytics.properties
 crashlytics-build.properties

@@ -1,11 +1,11 @@
 <idea-plugin>
-  <id>com.your.company.unique.plugin.id</id>
+  <id>com.your.company.unique.com.id</id>
   <name>Plugin display name here</name>
   <version>1.0</version>
   <vendor email="support@yourcompany.com" url="http://www.yourcompany.com">YourCompany</vendor>
 
   <description><![CDATA[
-      Enter short description for your plugin here.<br>
+      Enter short description for your com here.<br>
       <em>most HTML tags may be used</em>
     ]]></description>
 
@@ -20,7 +20,7 @@
 
   <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
        on how to target different products -->
-  <!-- uncomment to enable plugin in all products
+  <!-- uncomment to enable com in all products
   <depends>com.intellij.modules.lang</depends>
   -->
 
@@ -29,7 +29,7 @@
   </extensions>
 
   <actions>
-    <action class="plugin.FilterDiffAction" id="FilterDiffAction" text="Filter/diff inspection result" >
+    <action class="com.inspectionDiff.DiffMenuItem" id="FilterDiffAction" text="Filter/diff inspection result" >
       <add-to-group group-id="InspectCodeGroup" anchor="after" relative-to-action="ViewOfflineInspection"/>
     </action>
   </actions>
