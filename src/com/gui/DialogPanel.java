@@ -1,7 +1,5 @@
 package com.gui;
 
-import com.intellij.uiDesigner.core.Spacer;
-
 import javax.swing.*;
 import java.awt.*;
 
