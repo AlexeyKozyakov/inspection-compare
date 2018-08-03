@@ -2,6 +2,7 @@ package com.inspectionDiff;
 
 import com.intellij.ide.DataManager;
 import com.intellij.notification.Notification;
+import com.intellij.notification.NotificationListener;
 import com.intellij.notification.NotificationType;
 import com.intellij.notification.Notifications;
 import com.intellij.openapi.actionSystem.DataContext;
@@ -16,6 +17,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
+import javax.swing.event.HyperlinkEvent;
 import java.awt.event.ActionEvent;
 
 public class DiffDialog extends DialogWrapper {
@@ -60,8 +62,20 @@ public class DiffDialog extends DialogWrapper {
                                 "Baseline warnings count: " + result.baseProblems + "<br>" +
                                         "Updated warnings count: " + result.updatedProblems + "<br>" +
                                         "Added warnings: " + result.added + "<br>" +
-                                        "Removed warnings: " + result.removed,
-                                NotificationType.INFORMATION, null));
+                                        "Removed warnings: " + result.removed + "<br>" +
+                                "<a href=\"added\">[ Open added ]</a>  " +
+                                "<a href=\"removed\">[ Open removed ]</a>",
+                                NotificationType.INFORMATION, new NotificationListener() {
+                            @Override
+                            public void hyperlinkUpdate(@NotNull Notification notification, @NotNull HyperlinkEvent event) {
+                                if (event.getDescription().equals("added")) {
+                                    
+                                }
+                                if (event.getDescription().equals("removed")) {
+
+                                }
+                            }
+                        }));
                     } catch (Exception e) {
 
                     }
