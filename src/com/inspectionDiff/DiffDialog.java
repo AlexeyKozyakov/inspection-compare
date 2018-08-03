@@ -57,25 +57,8 @@ public class DiffDialog extends DialogWrapper {
                     try {
                         XmlDiffResult result = XmlDiff.compare(dialogPanel.getBaseAsStr(), dialogPanel.getUpdatedAsStr(), dialogPanel.getAddedWarningsAsStr(),
                                 dialogPanel.getRemovedWarningsAsStr() , dialogPanel.getFilterAsStr());
+                        sendNotification(result);
                         indicator.setFraction(1.0);
-                        Notifications.Bus.notify(new Notification("Plugins notifications", null, "Completed!", null,
-                                "Baseline warnings count: " + result.baseProblems + "<br>" +
-                                        "Updated warnings count: " + result.updatedProblems + "<br>" +
-                                        "Added warnings: " + result.added + "<br>" +
-                                        "Removed warnings: " + result.removed + "<br>" +
-                                "<a href=\"added\">[ Open added ]</a>  " +
-                                "<a href=\"removed\">[ Open removed ]</a>",
-                                NotificationType.INFORMATION, new NotificationListener() {
-                            @Override
-                            public void hyperlinkUpdate(@NotNull Notification notification, @NotNull HyperlinkEvent event) {
-                                if (event.getDescription().equals("added")) {
-                                    
-                                }
-                                if (event.getDescription().equals("removed")) {
-
-                                }
-                            }
-                        }));
                     } catch (Exception e) {
 
                     }
@@ -84,5 +67,25 @@ public class DiffDialog extends DialogWrapper {
             close(0);
         }
 
+        private void sendNotification(XmlDiffResult result) {
+            Notifications.Bus.notify(new Notification("Plugins notifications", null, "Completed!", null,
+                    "Baseline warnings count: " + result.baseProblems + "<br>" +
+                            "Updated warnings count: " + result.updatedProblems + "<br>" +
+                            "Added warnings: " + result.added + "<br>" +
+                            "Removed warnings: " + result.removed + "<br>" +
+                            "<a href=\"added\">[ Open added ]</a>  " +
+                            "<a href=\"removed\">[ Open removed ]</a>",
+                    NotificationType.INFORMATION, new NotificationListener() {
+                @Override
+                public void hyperlinkUpdate(@NotNull Notification notification, @NotNull HyperlinkEvent event) {
+                    if (event.getDescription().equals("added")) {
+
+                    }
+                    if (event.getDescription().equals("removed")) {
+
+                    }
+                }
+            }));
+        }
     }
 }
