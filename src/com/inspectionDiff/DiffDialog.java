@@ -1,6 +1,9 @@
 package com.inspectionDiff;
 
 import com.intellij.ide.DataManager;
+import com.intellij.notification.Notification;
+import com.intellij.notification.NotificationType;
+import com.intellij.notification.Notifications;
 import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.actionSystem.DataKeys;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -9,6 +12,7 @@ import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.DialogWrapper;
 import com.gui.DialogPanel;
+import com.intellij.openapi.vcs.changes.committed.VcsConfigurationChangeListener;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -43,7 +47,7 @@ public class DiffDialog extends DialogWrapper {
 
         public RunAction(String baseline, String updated, String filter, String addedWarnings, String removedWarnings) {
             super("Run", 0);
-
+            setResizable(false);
         }
 
         @Override
@@ -66,6 +70,8 @@ public class DiffDialog extends DialogWrapper {
                                 e.printStackTrace();
                             }
                         }
+                        Notifications.Bus.notify(new Notification("Diff result", null, "Test", "test notification",
+                                "hello, it's notification", NotificationType.INFORMATION, null));
                     }
                 });
             }
