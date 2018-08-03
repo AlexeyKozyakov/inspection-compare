@@ -53,13 +53,7 @@ public class DiffDialog extends DialogWrapper {
                 @Override
                 public void run(@NotNull ProgressIndicator indicator) {
                     try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                    indicator.setFraction(0.0);
-                    try {
-                        XmlDiffResult result = XmlDiff.compare(dialogPanel.getBaseAsStr(), dialogPanel.getUpdatedAsStr(), dialogPanel.getAddedWarningsAsStr(), null);
+                        XmlDiffResult result = XmlDiff.compare(dialogPanel.getBaseAsStr(), dialogPanel.getUpdatedAsStr(), dialogPanel.getAddedWarningsAsStr(), dialogPanel.getFilterAsStr());
                         indicator.setFraction(1.0);
                         Notifications.Bus.notify(new Notification("Plugins notifications", null, "Completed!", null,
                                 "Baseline warnings count: " + result.baseProblems + "<br>" +
