@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<problems>
+  <problem>
+        <file>file://$PROJECT_DIR$/community/platform/lang-impl/src/com/intellij/refactoring/BaseRefactoringProcessor.java</file>
+        <line>92</line>
+        <module>intellij.platform.lang.impl</module>
+        <package>com.intellij.refactoring</package>
+        <entry_point FQNAME="com.intellij.refactoring.BaseRefactoringProcessor myPrepareSuccessfulSwingThreadCallback" TYPE="field"/>
+        <problem_class attribute_key="NOT_USED_ELEMENT_ATTRIBUTES" severity="WARNING">Unused assignment</problem_class>
+        <description>Variable &lt;code&gt;myPreparecessfulSwingThreadCallback&lt;/code&gt; initializer &lt;code&gt;EmptyRunnable.INSTANCE&lt;/code&gt; is redundant</description>
+    </problem>
+</problems>

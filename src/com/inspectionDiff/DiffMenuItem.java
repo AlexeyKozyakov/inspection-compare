@@ -14,5 +14,4 @@ public class DiffMenuItem extends AnAction {
         DiffDialog dialog = new DiffDialog(event.getProject(), true);
         dialog.show();
     }
-
 }

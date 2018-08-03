@@ -12,7 +12,6 @@ import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.DialogWrapper;
 import com.gui.DialogPanel;
-import com.intellij.openapi.vcs.changes.committed.VcsConfigurationChangeListener;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -20,7 +19,6 @@ import javax.swing.*;
 import java.awt.event.ActionEvent;
 
 public class DiffDialog extends DialogWrapper {
-
     private DialogPanel dialogPanel = new DialogPanel();
     protected DiffDialog(@Nullable Project project, boolean canBeParent) {
         super(project, canBeParent);
@@ -37,45 +35,45 @@ public class DiffDialog extends DialogWrapper {
     @NotNull
     @Override
     protected Action[] createActions() {
-        RunAction runAction = new RunAction(dialogPanel.getBaseAsStr(), dialogPanel.getUpdatedAsStr(),
-                dialogPanel.getFilterAsStr(), dialogPanel.getAddedWarningsAsStr(), dialogPanel.getRemovedWarningsAsStr());
+        RunAction runAction = new RunAction();
         return new Action[] { runAction, getCancelAction()};
     }
 
-
     protected class RunAction extends DialogWrapperExitAction {
 
-        public RunAction(String baseline, String updated, String filter, String addedWarnings, String removedWarnings) {
+        public RunAction() {
             super("Run", 0);
             setResizable(false);
         }
 
         @Override
         public void actionPerformed(ActionEvent event) {
-            Object source = event.getSource();
-            if (source instanceof JComponent) {
-                JComponent src = (JComponent)source;
-                DataContext dataContext = DataManager.getInstance().getDataContext(src);
-                ProgressManager.getInstance().run(new Task.Backgroundable(DataKeys.PROJECT.getData(dataContext), "Tittle") {
-                    @Override
-                    public void run(@NotNull ProgressIndicator indicator) {
-                        for (int i = 0; i < 10; i++) {
-                            if (indicator.isCanceled()) {
-                                return;
-                            }
-                            indicator.setFraction(i  / 10.0);
-                            try {
-                                Thread.sleep(1000);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                        Notifications.Bus.notify(new Notification("Diff result", null, "Test", "test notification",
-                                "hello, it's notification", NotificationType.INFORMATION, null));
+            DataContext dataContext = DataManager.getInstance().getDataContext(dialogPanel);
+            ProgressManager.getInstance().run(new Task.Backgroundable(DataKeys.PROJECT.getData(dataContext), "Comparing") {
+                @Override
+                public void run(@NotNull ProgressIndicator indicator) {
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
                     }
-                });
-            }
+                    indicator.setFraction(0.0);
+                    try {
+                        XmlDiffResult result = XmlDiff.compare(dialogPanel.getBaseAsStr(), dialogPanel.getUpdatedAsStr(), dialogPanel.getAddedWarningsAsStr(), null);
+                        indicator.setFraction(1.0);
+                        Notifications.Bus.notify(new Notification("Plugins notifications", null, "Completed!", null,
+                                "Baseline warnings count: " + result.baseProblems + "<br>" +
+                                        "Updated warnings count: " + result.updatedProblems + "<br>" +
+                                        "Added warnings: " + result.added + "<br>" +
+                                        "Removed warnings: " + result.removed + "<br>",
+                                NotificationType.INFORMATION, null));
+                    } catch (Exception e) {
+
+                    }
+                }
+            });
             close(0);
         }
+
     }
 }
