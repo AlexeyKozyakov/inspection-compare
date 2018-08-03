@@ -29,16 +29,19 @@ import java.util.HashMap;
 public class XmlDiff {
 
     public static XmlDiffResult compare(@NotNull String base,@NotNull String updated,
-                               @NotNull String out, @Nullable String filter) throws IOException, TransformerException, ParserConfigurationException, SAXException {
+                               @NotNull String outAdded, @NotNull String outRemoved, @Nullable String filter) throws IOException, TransformerException, ParserConfigurationException, SAXException {
         XmlDiffResult compareResult = new XmlDiffResult();
         Document left = read(Paths.get(base));
         Document right = read(Paths.get(updated));
-        Path output = Paths.get(out);
+        Path outputAdded = Paths.get(outAdded);
+        Path outputRemoved = Paths.get(outRemoved);
         if(filter != null) {
              filterBoth(left, right, filter, compareResult);
         }
-        Document diff = diff(left, right, compareResult);
-        write(output, diff);
+        Document added = diff(left, right, compareResult);
+        Document removed = diff(right, left, null);
+        write(outputAdded, added);
+        write(outputRemoved, removed);
         return compareResult;
     }
 
@@ -96,19 +99,21 @@ public class XmlDiff {
 
     private static Document diff(Document left, Document right, XmlDiffResult compareRes) throws ParserConfigurationException {
         Map<List<String>, Element> leftModel = getModel(left);
-        compareRes.baseProblems = leftModel.size();
         //System.out.println("Left problems: "+leftModel.size());
         Map<List<String>, Element> rightModel = getModel(right);
-        compareRes.updatedProblems = rightModel.size();
         //System.out.println("Right problems: "+rightModel.size());
         Map<List<String>, Element> leftSansRight = new HashMap<>(leftModel);
         leftSansRight.keySet().removeAll(rightModel.keySet());
         Map<List<String>, Element> rightSansLeft = new HashMap<>(rightModel);
         rightSansLeft.keySet().removeAll(leftModel.keySet());
-        compareRes.added =rightSansLeft.size();
         //System.out.println("Added: "+rightSansLeft.size());
-        compareRes.removed = leftSansRight.size();
         //System.out.println("Removed: "+leftSansRight.size());
+        if (compareRes != null) {
+            compareRes.baseProblems = leftModel.size();
+            compareRes.updatedProblems = rightModel.size();
+            compareRes.added =rightSansLeft.size();
+            compareRes.removed = leftSansRight.size();
+        }
         Document res = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
         Element root = res.createElement("problems");
         for (Element newChild : rightSansLeft.values()) {

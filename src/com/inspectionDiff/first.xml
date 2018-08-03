@@ -7,7 +7,7 @@
     <package>com.intellij.util.ui</package>
     <entry_point FQNAME="com.intellij.util.ui.ListTableModel mySortOrder" TYPE="field"/>
     <problem_class attribute_key="NOT_USED_ELEMENT_ATTRIBUTES" severity="WARNING">Unused assignment</problem_class>
-    <description>Variable &lt;code&gt;mySortOrder&lt;/code&gt; initializer &lt;code&gt;SortOrder.ASCENDING&lt;/code&gt; is redundant</description>
+    <description>lol kek</description>
   </problem>
   <problem>
     <file>file://$PROJECT_DIR$/CIDR/cidr-lang/src/com/jetbrains/cidr/lang/types/OCArrayType.java</file>
