@@ -35,7 +35,9 @@ public class XmlDiff {
         Path leftFolder = Paths.get(base);
         Path rightFolder = Paths.get(updated);
         Path outputAdded = Paths.get(outAdded);
+        Files.createDirectories(outputAdded);
         Path outputRemoved = Paths.get(outRemoved);
+        Files.createDirectories(outputRemoved);
 
         Map<String, Path> leftFiles = Files.walk(leftFolder)
                 .filter(p -> p.toString().toLowerCase().endsWith(".xml"))

@@ -8,6 +8,7 @@ import javax.swing.*;
 import java.awt.*;
 
 public class DialogPanel extends JPanel {
+    private JPanel container = new JPanel();
     private JLabel baselineLabel = new JLabel("Baseline inspection result");
     private JLabel updatedLabel = new JLabel("Updated inspection result");
     private JLabel filterLabel = new JLabel("Filter");
@@ -27,18 +28,19 @@ public class DialogPanel extends JPanel {
                 false, false, false, false)));
         removedWarnings.addBrowseFolderListener(new TextBrowseFolderListener(new FileChooserDescriptor(false, true,
                 false, false, false, false)));
-        add(baselineLabel);
-        add(baseline);
-        add(updatedLabel);
-        add(updated);
-        add(filterLabel);
-        add(filter);
-        add(addedWarningsLabel);
-        add(addedWarnings);
-        add(removedWarningsLabel);
-        add(removedWarnings);
-        setLayout(new GridLayout(10, 1));
-        setPreferredSize(new Dimension(800, 600));
+        container.add(baselineLabel);
+        container.add(baseline);
+        container.add(updatedLabel);
+        container.add(updated);
+        container.add(filterLabel);
+        container.add(filter);
+        container.add(addedWarningsLabel);
+        container.add(addedWarnings);
+        container.add(removedWarningsLabel);
+        container.add(removedWarnings);
+        container.setLayout(new GridLayout(10, 1));
+        container.setPreferredSize(new Dimension(800, 600));
+        add(container);
     }
     public String getBaseAsStr() {
         return baseline.getText();
@@ -56,4 +58,22 @@ public class DialogPanel extends JPanel {
         return removedWarnings.getText();
     }
 
+    public TextFieldWithBrowseButton getBaseline() {
+        return baseline;
+    }
+    public TextFieldWithBrowseButton getUpdated() {
+        return updated;
+    }
+
+    public TextFieldWithBrowseButton getAddedWarnings() {
+        return addedWarnings;
+    }
+
+    public TextFieldWithBrowseButton getRemovedWarnings() {
+        return removedWarnings;
+    }
+
+    public JPanel getContainer() {
+        return container;
+    }
 }
