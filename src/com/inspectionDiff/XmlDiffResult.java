@@ -1,7 +1,6 @@
 package com.inspectionDiff;
 
 class XmlDiffResult {
-
     int baseCount;
     int updatedCount;
     int baseFiltered;
@@ -11,4 +10,16 @@ class XmlDiffResult {
     int added;
     int removed;
 
+    public void add(XmlDiffResult other) {
+        baseCount += other.baseCount;
+        updatedCount += other.updatedCount;
+        baseFiltered += other.baseFiltered;
+        updatedFiltered += other.updatedFiltered;
+        baseProblems += other.baseProblems;
+        updatedProblems += other.updatedProblems;
+        added += other.added;
+        removed += other.removed;
+    }
+
 }
+

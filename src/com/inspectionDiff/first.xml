@@ -7,7 +7,7 @@
     <package>com.intellij.util.ui</package>
     <entry_point FQNAME="com.intellij.util.ui.ListTableModel mySortOrder" TYPE="field"/>
     <problem_class attribute_key="NOT_USED_ELEMENT_ATTRIBUTES" severity="WARNING">Unused assignment</problem_class>
-    <description>lol kek</description>
+    <description>12345678</description>
   </problem>
   <problem>
     <file>file://$PROJECT_DIR$/CIDR/cidr-lang/src/com/jetbrains/cidr/lang/types/OCArrayType.java</file>

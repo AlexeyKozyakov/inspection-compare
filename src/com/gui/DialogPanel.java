@@ -1,5 +1,9 @@
 package com.gui;
 
+import com.intellij.openapi.fileChooser.FileChooserDescriptor;
+import com.intellij.openapi.ui.TextBrowseFolderListener;
+import com.intellij.openapi.ui.TextFieldWithBrowseButton;
+
 import javax.swing.*;
 import java.awt.*;
 
@@ -9,12 +13,20 @@ public class DialogPanel extends JPanel {
     private JLabel filterLabel = new JLabel("Filter");
     private JLabel addedWarningsLabel = new JLabel("Added warnings output");
     private JLabel removedWarningsLabel = new JLabel("Removed warnings output");
-    private JTextField baseline = new JTextField();
-    private JTextField updated = new JTextField();
+    private TextFieldWithBrowseButton baseline = new TextFieldWithBrowseButton();
+    private TextFieldWithBrowseButton updated = new TextFieldWithBrowseButton();
     private JTextField filter = new JTextField();
-    private JTextField addedWarnings = new JTextField();
-    private JTextField removedWarnings = new JTextField();
+    private TextFieldWithBrowseButton addedWarnings = new TextFieldWithBrowseButton();
+    private TextFieldWithBrowseButton removedWarnings = new TextFieldWithBrowseButton();
     public DialogPanel() {
+        baseline.addBrowseFolderListener(new TextBrowseFolderListener(new FileChooserDescriptor(false, true,
+                false, false, false, false)));
+        updated.addBrowseFolderListener(new TextBrowseFolderListener(new FileChooserDescriptor(false, true,
+                false, false, false, false)));
+        addedWarnings.addBrowseFolderListener(new TextBrowseFolderListener(new FileChooserDescriptor(false, true,
+                false, false, false, false)));
+        removedWarnings.addBrowseFolderListener(new TextBrowseFolderListener(new FileChooserDescriptor(false, true,
+                false, false, false, false)));
         add(baselineLabel);
         add(baseline);
         add(updatedLabel);

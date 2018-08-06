@@ -2,7 +2,6 @@ package com.inspectionDiff;
 
 import com.intellij.ide.DataManager;
 import com.intellij.notification.Notification;
-import com.intellij.notification.NotificationListener;
 import com.intellij.notification.NotificationType;
 import com.intellij.notification.Notifications;
 import com.intellij.openapi.actionSystem.DataContext;
@@ -17,11 +16,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
-import javax.swing.event.HyperlinkEvent;
 import java.awt.event.ActionEvent;
 
 public class DiffDialog extends DialogWrapper {
-    private DialogPanel dialogPanel = new DialogPanel();
+    private final DialogPanel dialogPanel = new DialogPanel();
     protected DiffDialog(@Nullable Project project, boolean canBeParent) {
         super(project, canBeParent);
         init();
@@ -55,12 +53,11 @@ public class DiffDialog extends DialogWrapper {
                 @Override
                 public void run(@NotNull ProgressIndicator indicator) {
                     try {
-                        XmlDiffResult result = XmlDiff.compare(dialogPanel.getBaseAsStr(), dialogPanel.getUpdatedAsStr(), dialogPanel.getAddedWarningsAsStr(),
-                                dialogPanel.getRemovedWarningsAsStr() , dialogPanel.getFilterAsStr());
+                        XmlDiffResult result = XmlDiff.compareFolders(dialogPanel.getBaseAsStr(), dialogPanel.getUpdatedAsStr(), dialogPanel.getAddedWarningsAsStr(),
+                                dialogPanel.getRemovedWarningsAsStr() , dialogPanel.getFilterAsStr(), indicator);
                         sendNotification(result);
-                        indicator.setFraction(1.0);
                     } catch (Exception e) {
-
+                        e.printStackTrace();
                     }
                 }
             });
@@ -75,17 +72,14 @@ public class DiffDialog extends DialogWrapper {
                             "Removed warnings: " + result.removed + "<br>" +
                             "<a href=\"added\">[ Open added ]</a>  " +
                             "<a href=\"removed\">[ Open removed ]</a>",
-                    NotificationType.INFORMATION, new NotificationListener() {
-                @Override
-                public void hyperlinkUpdate(@NotNull Notification notification, @NotNull HyperlinkEvent event) {
-                    if (event.getDescription().equals("added")) {
+                    NotificationType.INFORMATION, (notification, event) -> {
+                        if (event.getDescription().equals("added")) {
 
-                    }
-                    if (event.getDescription().equals("removed")) {
+                        }
+                        if (event.getDescription().equals("removed")) {
 
-                    }
-                }
-            }));
+                        }
+                    }));
         }
     }
 }

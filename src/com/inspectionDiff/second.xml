@@ -7,7 +7,16 @@
         <package>com.intellij.util.ui</package>
         <entry_point FQNAME="com.intellij.util.ui.ListTableModel mySortOrder" TYPE="field"/>
         <problem_class attribute_key="NOT_USED_ELEMENT_ATTRIBUTES" severity="WARNING">Unused assignment</problem_class>
-        <description>azaza</description>
+        <description>987654321</description>
+    </problem>
+    <problem>
+        <file>file://$PROJECT_DIR$/community/platform/util/src/com/intellij/util/ui/ListTableModel.java</file>
+        <line>31</line>
+        <module>intellij.platform.util</module>
+        <package>com.intellij.util.ui</package>
+        <entry_point FQNAME="com.intellij.util.ui.ListTableModel mySortOrder" TYPE="field"/>
+        <problem_class attribute_key="NOT_USED_ELEMENT_ATTRIBUTES" severity="WARNING">Unused assignment</problem_class>
+        <description>54321</description>
     </problem>
     <problem>
         <file>file://$PROJECT_DIR$/CIDR/cidr-lang/src/com/jetbrains/cidr/lang/types/OCArrayType.java</file>
@@ -403,7 +412,7 @@
         <package>com.intellij.refactoring</package>
         <entry_point FQNAME="com.intellij.refactoring.BaseRefactoringProcessor myPrepareSuccessfulSwingThreadCallback" TYPE="field"/>
         <problem_class attribute_key="NOT_USED_ELEMENT_ATTRIBUTES" severity="WARNING">Unused assignment</problem_class>
-        <description>Variable &lt;code&gt;myPreparecessfulSwingThreadCallback&lt;/code&gt; initializer &lt;code&gt;EmptyRunnable.INSTANCE&lt;/code&gt; is redundant</description>
+        <description>Variable &lt;code&gt;myPrepareSuccessfulSwingThreadCallback&lt;/code&gt; initializer &lt;code&gt;EmptyRunnable.INSTANCE&lt;/code&gt; is redundant</description>
     </problem>
     <problem>
         <file>file://$PROJECT_DIR$/community/java/openapi/src/com/intellij/ui/classFilter/ClassFilterEditor.java</file>

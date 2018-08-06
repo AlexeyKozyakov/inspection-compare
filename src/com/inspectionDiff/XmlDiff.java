@@ -1,4 +1,8 @@
 package com.inspectionDiff;
+import com.intellij.openapi.progress.ProgressIndicator;
+import com.yourkit.util.FileUtil;
+import groovy.util.MapEntry;
+import org.apache.commons.io.FileUtils;
 import org.jetbrains.annotations.NotNull;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -16,34 +20,68 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
+import java.nio.file.StandardCopyOption;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class XmlDiff {
 
-    public static XmlDiffResult compare(@NotNull String base,@NotNull String updated,
-                               @NotNull String outAdded, @NotNull String outRemoved, @Nullable String filter) throws IOException, TransformerException, ParserConfigurationException, SAXException {
+    public static XmlDiffResult compareFolders(@NotNull String base, @NotNull String updated,
+                                               @NotNull String outAdded, @NotNull String outRemoved, @Nullable String filter, @Nullable ProgressIndicator indicator) throws IOException, TransformerException, ParserConfigurationException, SAXException {
         XmlDiffResult compareResult = new XmlDiffResult();
-        Document left = read(Paths.get(base));
-        Document right = read(Paths.get(updated));
+        Path leftFolder = Paths.get(base);
+        Path rightFolder = Paths.get(updated);
         Path outputAdded = Paths.get(outAdded);
         Path outputRemoved = Paths.get(outRemoved);
+        Map<String, Path> leftFiles = Files.walk(leftFolder)
+                .filter(p -> p.toString().toLowerCase().endsWith(".xml"))
+                .collect(Collectors.toMap(f -> f.getFileName().toString(), f -> f));
+        Map<String, Path> rightFiles = Files.walk(rightFolder)
+                .filter(p -> p.toString().toLowerCase().endsWith(".xml"))
+                .collect(Collectors.toMap(f -> f.getFileName().toString(), f -> f));
+        Map<String, Path> leftSansRight = new HashMap<>(leftFiles);
+        leftSansRight.keySet().removeAll(rightFiles.keySet());
+        Map<String, Path> rightSansLeft = new HashMap<>(rightFiles);
+        rightSansLeft.keySet().removeAll(leftFiles.keySet());
+        for (Map.Entry<String, Path> file : rightSansLeft.entrySet()) {
+            Files.copy(file.getValue(), outputAdded.resolve(file.getKey()), StandardCopyOption.REPLACE_EXISTING);
+        }
+        for (Map.Entry<String, Path> file : leftSansRight.entrySet()) {
+            Files.copy(file.getValue(), outputRemoved.resolve(file.getKey()), StandardCopyOption.REPLACE_EXISTING);
+        }
+        int progress = 0;
+        for (Map.Entry<String, Path> file : leftFiles.entrySet()) {
+            if (rightFiles.containsKey(file.getKey())) {
+                compareResult.add(compareFiles(file.getValue(), rightFiles.get(file.getKey()), outputAdded.resolve(file.getKey()),
+                        outputRemoved.resolve(file.getKey()), filter));
+                indicator.setFraction((double)progress / leftFiles.size());
+            }
+            ++progress;
+        }
+        Files.copy(leftFolder.resolve(".descriptions.xml"), outputAdded.resolve(".descriptions.xml"), StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(leftFolder.resolve(".descriptions.xml"), outputRemoved.resolve(".descriptions.xml"), StandardCopyOption.REPLACE_EXISTING);
+        indicator.setFraction(1.0);
+        return compareResult;
+    }
+
+    public static XmlDiffResult compareFiles(@NotNull Path base,@NotNull Path updated,
+                               @NotNull Path outAdded, @NotNull Path outRemoved, @Nullable String filter) throws IOException, TransformerException, ParserConfigurationException, SAXException {
+        XmlDiffResult compareResult = new XmlDiffResult();
+        Document left = read(base);
+        Document right = read(updated);
         if(filter != null) {
              filterBoth(left, right, filter, compareResult);
         }
         Document added = diff(left, right, compareResult);
         Document removed = diff(right, left, null);
-        write(outputAdded, added);
-        write(outputRemoved, removed);
+        write(outAdded, added);
+        write(outRemoved, removed);
         return compareResult;
     }
+
 
     private static void filterBoth(Document left, Document right, String substring, XmlDiffResult compareRes) {
         int [] leftBeforeAfter = filter(left, substring);
