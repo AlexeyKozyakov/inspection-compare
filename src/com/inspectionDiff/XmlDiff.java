@@ -36,22 +36,17 @@ public class XmlDiff {
         Path rightFolder = Paths.get(updated);
         Path outputAdded = Paths.get(outAdded);
         Path outputRemoved = Paths.get(outRemoved);
+
         Map<String, Path> leftFiles = Files.walk(leftFolder)
                 .filter(p -> p.toString().toLowerCase().endsWith(".xml"))
                 .collect(Collectors.toMap(f -> f.getFileName().toString(), f -> f));
         Map<String, Path> rightFiles = Files.walk(rightFolder)
                 .filter(p -> p.toString().toLowerCase().endsWith(".xml"))
                 .collect(Collectors.toMap(f -> f.getFileName().toString(), f -> f));
-        Map<String, Path> leftSansRight = new HashMap<>(leftFiles);
-        leftSansRight.keySet().removeAll(rightFiles.keySet());
-        Map<String, Path> rightSansLeft = new HashMap<>(rightFiles);
-        rightSansLeft.keySet().removeAll(leftFiles.keySet());
-        for (Map.Entry<String, Path> file : rightSansLeft.entrySet()) {
-            Files.copy(file.getValue(), outputAdded.resolve(file.getKey()), StandardCopyOption.REPLACE_EXISTING);
-        }
-        for (Map.Entry<String, Path> file : leftSansRight.entrySet()) {
-            Files.copy(file.getValue(), outputRemoved.resolve(file.getKey()), StandardCopyOption.REPLACE_EXISTING);
-        }
+
+        DiffFiles(leftFiles, rightFiles, outputAdded, outputRemoved, compareResult);
+
+        //diff content
         int progress = 0;
         for (Map.Entry<String, Path> file : leftFiles.entrySet()) {
             if (rightFiles.containsKey(file.getKey())) {
@@ -61,11 +56,13 @@ public class XmlDiff {
             }
             ++progress;
         }
+
         Files.copy(leftFolder.resolve(".descriptions.xml"), outputAdded.resolve(".descriptions.xml"), StandardCopyOption.REPLACE_EXISTING);
         Files.copy(leftFolder.resolve(".descriptions.xml"), outputRemoved.resolve(".descriptions.xml"), StandardCopyOption.REPLACE_EXISTING);
         indicator.setFraction(1.0);
         return compareResult;
     }
+
 
     public static XmlDiffResult compareFiles(@NotNull Path base,@NotNull Path updated,
                                @NotNull Path outAdded, @NotNull Path outRemoved, @Nullable String filter) throws IOException, TransformerException, ParserConfigurationException, SAXException {
@@ -82,6 +79,25 @@ public class XmlDiff {
         return compareResult;
     }
 
+    private static void DiffFiles(Map<String, Path> leftFiles, Map<String, Path> rightFiles, Path outputAdded, Path outputRemoved, XmlDiffResult compareResult) throws ParserConfigurationException, SAXException, IOException {
+        Map<String, Path> leftSansRight = new HashMap<>(leftFiles);
+        leftSansRight.keySet().removeAll(rightFiles.keySet());
+        Map<String, Path> rightSansLeft = new HashMap<>(rightFiles);
+        rightSansLeft.keySet().removeAll(leftFiles.keySet());
+        int problems;
+        for (Map.Entry<String, Path> file : rightSansLeft.entrySet()) {
+            problems = filter(read(file.getValue()), "")[0];
+            compareResult.updatedProblems += problems;
+            compareResult.added += problems;
+            Files.copy(file.getValue(), outputAdded.resolve(file.getKey()), StandardCopyOption.REPLACE_EXISTING);
+        }
+        for (Map.Entry<String, Path> file : leftSansRight.entrySet()) {
+            problems = filter(read(file.getValue()), "")[0];
+            compareResult.baseProblems += problems;
+            compareResult.removed += problems;
+            Files.copy(file.getValue(), outputRemoved.resolve(file.getKey()), StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
 
     private static void filterBoth(Document left, Document right, String substring, XmlDiffResult compareRes) {
         int [] leftBeforeAfter = filter(left, substring);
@@ -95,7 +111,6 @@ public class XmlDiff {
     private static int [] filter(Document document, String substring) {
         Element doc = document.getDocumentElement();
         NodeList nodes = document.getDocumentElement().getChildNodes();
-        Map<List<String>, Element> result = new LinkedHashMap<>();
         int totalCount = 0, filteredCount = 0;
         for(int i=0; i<nodes.getLength(); i++) {
             Node node = nodes.item(i);
@@ -112,7 +127,6 @@ public class XmlDiff {
                 }
             }
         }
-        //System.out.println("Filtered: "+totalCount+" -> "+filteredCount);
         return new int [] {totalCount, filteredCount};
     }
 
@@ -137,15 +151,11 @@ public class XmlDiff {
 
     private static Document diff(Document left, Document right, XmlDiffResult compareRes) throws ParserConfigurationException {
         Map<List<String>, Element> leftModel = getModel(left);
-        //System.out.println("Left problems: "+leftModel.size());
         Map<List<String>, Element> rightModel = getModel(right);
-        //System.out.println("Right problems: "+rightModel.size());
         Map<List<String>, Element> leftSansRight = new HashMap<>(leftModel);
         leftSansRight.keySet().removeAll(rightModel.keySet());
         Map<List<String>, Element> rightSansLeft = new HashMap<>(rightModel);
         rightSansLeft.keySet().removeAll(leftModel.keySet());
-        //System.out.println("Added: "+rightSansLeft.size());
-        //System.out.println("Removed: "+leftSansRight.size());
         if (compareRes != null) {
             compareRes.baseProblems = leftModel.size();
             compareRes.updatedProblems = rightModel.size();
