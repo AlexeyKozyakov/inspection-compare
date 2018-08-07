@@ -57,8 +57,7 @@ public class DiffDialog extends DialogWrapper {
     @NotNull
     @Override
     protected Action[] createActions() {
-        RunAction runAction = new RunAction();
-        return new Action[] { runAction, getCancelAction()};
+        return new Action[] { new RunAction(), getCancelAction()};
     }
 
     @Nullable
@@ -116,7 +115,7 @@ public class DiffDialog extends DialogWrapper {
                             removedWarnings = dialogPanel.getRemovedWarningsAsStr();
                             XmlDiffResult result = XmlDiff.compareFolders(dialogPanel.getBaseAsStr(), dialogPanel.getUpdatedAsStr(), addedWarnings,
                                     removedWarnings, dialogPanel.getFilterAsStr(), indicator);
-                            sendNotification(result, project);
+                            ApplicationManager.getApplication().invokeLater(() -> sendNotification(result, project));
                         } catch (Exception e) {
                             e.printStackTrace();
                         }

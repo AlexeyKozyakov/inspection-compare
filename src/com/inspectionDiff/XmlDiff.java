@@ -1,8 +1,5 @@
 package com.inspectionDiff;
 import com.intellij.openapi.progress.ProgressIndicator;
-import com.yourkit.util.FileUtil;
-import groovy.util.MapEntry;
-import org.apache.commons.io.FileUtils;
 import org.jetbrains.annotations.NotNull;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -47,17 +44,7 @@ public class XmlDiff {
                 .collect(Collectors.toMap(f -> f.getFileName().toString(), f -> f));
 
         diffFiles(leftFiles, rightFiles, outputAdded, outputRemoved, compareResult);
-
-        //diff content
-        int progress = 0;
-        for (Map.Entry<String, Path> file : leftFiles.entrySet()) {
-            if (rightFiles.containsKey(file.getKey())) {
-                compareResult.add(compareFiles(file.getValue(), rightFiles.get(file.getKey()), outputAdded.resolve(file.getKey()),
-                        outputRemoved.resolve(file.getKey()), filter));
-                indicator.setFraction((double)progress / leftFiles.size());
-            }
-            ++progress;
-        }
+        diffContent(leftFiles, rightFiles, outputAdded, outputRemoved, filter, compareResult, indicator);
 
         Files.copy(leftFolder.resolve(".descriptions.xml"), outputAdded.resolve(".descriptions.xml"), StandardCopyOption.REPLACE_EXISTING);
         Files.copy(leftFolder.resolve(".descriptions.xml"), outputRemoved.resolve(".descriptions.xml"), StandardCopyOption.REPLACE_EXISTING);
@@ -79,6 +66,18 @@ public class XmlDiff {
         write(outAdded, added);
         write(outRemoved, removed);
         return compareResult;
+    }
+
+    private static void diffContent(Map<String, Path> leftFiles, Map<String, Path> rightFiles, Path outputAdded, Path outputRemoved, String filter, XmlDiffResult compareResult, ProgressIndicator indicator ) throws ParserConfigurationException, TransformerException, SAXException, IOException {
+        int progress = 0;
+        for (Map.Entry<String, Path> file : leftFiles.entrySet()) {
+            if (rightFiles.containsKey(file.getKey())) {
+                compareResult.add(compareFiles(file.getValue(), rightFiles.get(file.getKey()), outputAdded.resolve(file.getKey()),
+                        outputRemoved.resolve(file.getKey()), filter));
+                indicator.setFraction((double)progress / leftFiles.size());
+            }
+            ++progress;
+        }
     }
 
     private static void diffFiles(Map<String, Path> leftFiles, Map<String, Path> rightFiles, Path outputAdded, Path outputRemoved, XmlDiffResult compareResult) throws ParserConfigurationException, SAXException, IOException {
