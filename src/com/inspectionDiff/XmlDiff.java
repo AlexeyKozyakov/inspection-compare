@@ -43,7 +43,7 @@ public class XmlDiff {
                 .filter(p -> p.toString().toLowerCase().endsWith(".xml"))
                 .collect(Collectors.toMap(f -> f.getFileName().toString(), f -> f));
 
-        diffFiles(leftFiles, rightFiles, outputAdded, outputRemoved, compareResult);
+        diffFiles(leftFiles, rightFiles, outputAdded, outputRemoved, compareResult, filter);
         diffContent(leftFiles, rightFiles, outputAdded, outputRemoved, filter, compareResult, indicator);
 
         Files.copy(leftFolder.resolve(".descriptions.xml"), outputAdded.resolve(".descriptions.xml"), StandardCopyOption.REPLACE_EXISTING);
@@ -83,23 +83,25 @@ public class XmlDiff {
         }
     }
 
-    private static void diffFiles(Map<String, Path> leftFiles, Map<String, Path> rightFiles, Path outputAdded, Path outputRemoved, XmlDiffResult compareResult) throws ParserConfigurationException, SAXException, IOException {
+    private static void diffFiles(Map<String, Path> leftFiles, Map<String, Path> rightFiles, Path outputAdded, Path outputRemoved, XmlDiffResult compareResult, String filter) throws ParserConfigurationException, SAXException, IOException, TransformerException {
         Map<String, Path> leftSansRight = new HashMap<>(leftFiles);
         leftSansRight.keySet().removeAll(rightFiles.keySet());
         Map<String, Path> rightSansLeft = new HashMap<>(rightFiles);
         rightSansLeft.keySet().removeAll(leftFiles.keySet());
         int problems;
         for (Map.Entry<String, Path> file : rightSansLeft.entrySet()) {
-            problems = filter(read(file.getValue()), "")[0];
+            Document doc = read(file.getValue());
+            problems = filter(doc, filter)[1];
             compareResult.updatedProblems += problems;
             compareResult.added += problems;
-            Files.copy(file.getValue(), outputAdded.resolve(file.getKey()), StandardCopyOption.REPLACE_EXISTING);
+            write(outputAdded.resolve(file.getKey()), doc);
         }
         for (Map.Entry<String, Path> file : leftSansRight.entrySet()) {
-            problems = filter(read(file.getValue()), "")[0];
+            Document doc = read(file.getValue());
+            problems = filter(read(file.getValue()), filter)[1];
             compareResult.baseProblems += problems;
             compareResult.removed += problems;
-            Files.copy(file.getValue(), outputRemoved.resolve(file.getKey()), StandardCopyOption.REPLACE_EXISTING);
+            write(outputRemoved.resolve(file.getKey()), doc);
         }
     }
 

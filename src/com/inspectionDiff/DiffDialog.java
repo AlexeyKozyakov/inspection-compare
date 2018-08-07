@@ -192,7 +192,6 @@ public class DiffDialog extends DialogWrapper {
                         final String name = profileName[0];
                         InspectionResultsView view = ViewOfflineResultsAction.showOfflineView(project, name, resMap, InspectionsBundle.message("offline.view.title") +
                                 " (" + (name != null ? name : InspectionsBundle.message("offline.view.editor.settings.title")) + ")");
-                        Disposer.register(project, view);
                     });
                 }
             });
