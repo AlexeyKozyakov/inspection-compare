@@ -27,7 +27,6 @@ import com.intellij.openapi.ui.ValidationInfo;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.openapi.vfs.VirtualFileManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -47,7 +46,6 @@ public class DiffDialog extends DialogWrapper {
         super(project, canBeParent);
         init();
         setTitle("Test");
-        startTrackingValidation();
     }
 
     @Nullable
@@ -62,7 +60,6 @@ public class DiffDialog extends DialogWrapper {
         RunAction runAction = new RunAction();
         return new Action[] { runAction, getCancelAction()};
     }
-
 
     @Nullable
     @Override
@@ -127,6 +124,7 @@ public class DiffDialog extends DialogWrapper {
                 });
                 close(0);
             } else {
+                startTrackingValidation();
                 dialogPanel.grabFocus();
             }
         }
@@ -141,11 +139,11 @@ public class DiffDialog extends DialogWrapper {
                             "<a href=\"removed\">[ Open removed ]</a>",
                     NotificationType.INFORMATION, (notification, event) -> {
                         if (event.getDescription().equals("added")) {
-                            VirtualFile added = LocalFileSystem.getInstance().findFileByPath(addedWarnings);
+                            VirtualFile added = LocalFileSystem.getInstance().refreshAndFindFileByPath(addedWarnings);
                             openOfflineView(added, project);
                         }
                         if (event.getDescription().equals("removed")) {
-                            VirtualFile removed = LocalFileSystem.getInstance().findFileByPath(removedWarnings);
+                            VirtualFile removed = LocalFileSystem.getInstance().refreshAndFindFileByPath(removedWarnings);
                             openOfflineView(removed, project);
                         }
                     }));

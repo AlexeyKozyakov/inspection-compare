@@ -46,7 +46,7 @@ public class XmlDiff {
                 .filter(p -> p.toString().toLowerCase().endsWith(".xml"))
                 .collect(Collectors.toMap(f -> f.getFileName().toString(), f -> f));
 
-        DiffFiles(leftFiles, rightFiles, outputAdded, outputRemoved, compareResult);
+        diffFiles(leftFiles, rightFiles, outputAdded, outputRemoved, compareResult);
 
         //diff content
         int progress = 0;
@@ -81,7 +81,7 @@ public class XmlDiff {
         return compareResult;
     }
 
-    private static void DiffFiles(Map<String, Path> leftFiles, Map<String, Path> rightFiles, Path outputAdded, Path outputRemoved, XmlDiffResult compareResult) throws ParserConfigurationException, SAXException, IOException {
+    private static void diffFiles(Map<String, Path> leftFiles, Map<String, Path> rightFiles, Path outputAdded, Path outputRemoved, XmlDiffResult compareResult) throws ParserConfigurationException, SAXException, IOException {
         Map<String, Path> leftSansRight = new HashMap<>(leftFiles);
         leftSansRight.keySet().removeAll(rightFiles.keySet());
         Map<String, Path> rightSansLeft = new HashMap<>(rightFiles);
