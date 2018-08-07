@@ -6,7 +6,9 @@ import com.intellij.codeInspection.InspectionsBundle;
 import com.intellij.codeInspection.actions.ViewOfflineResultsAction;
 import com.intellij.codeInspection.offline.OfflineProblemDescriptor;
 import com.intellij.codeInspection.offlineViewer.OfflineViewParseUtil;
+import com.intellij.codeInspection.ui.InspectionResultsView;
 import com.intellij.ide.DataManager;
+import com.intellij.javaee.model.enums.Dispatcher;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationType;
 import com.intellij.notification.Notifications;
@@ -24,6 +26,7 @@ import com.intellij.openapi.ui.DialogWrapper;
 import com.gui.DialogPanel;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.ui.ValidationInfo;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -115,7 +118,7 @@ public class DiffDialog extends DialogWrapper {
                             removedWarnings = dialogPanel.getRemovedWarningsAsStr();
                             XmlDiffResult result = XmlDiff.compareFolders(dialogPanel.getBaseAsStr(), dialogPanel.getUpdatedAsStr(), addedWarnings,
                                     removedWarnings, dialogPanel.getFilterAsStr(), indicator);
-                            ApplicationManager.getApplication().invokeLater(() -> sendNotification(result, project));
+                            sendNotification(result, project);
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
@@ -134,8 +137,8 @@ public class DiffDialog extends DialogWrapper {
                             "Updated warnings count: " + result.updatedProblems + "<br>" +
                             "Added warnings: " + result.added + "<br>" +
                             "Removed warnings: " + result.removed + "<br>" +
-                            "<a href=\"added\">[ Open added ]</a>  " +
-                            "<a href=\"removed\">[ Open removed ]</a>",
+                            "<a href=\"added\">Open added</a>  " +
+                            "<a href=\"removed\">Open removed</a>",
                     NotificationType.INFORMATION, (notification, event) -> {
                         if (event.getDescription().equals("added")) {
                             VirtualFile added = LocalFileSystem.getInstance().refreshAndFindFileByPath(addedWarnings);
@@ -187,8 +190,9 @@ public class DiffDialog extends DialogWrapper {
                 public void onSuccess() {
                     ApplicationManager.getApplication().invokeLater(() -> {
                         final String name = profileName[0];
-                        ViewOfflineResultsAction.showOfflineView(project, name, resMap, InspectionsBundle.message("offline.view.title") +
+                        InspectionResultsView view = ViewOfflineResultsAction.showOfflineView(project, name, resMap, InspectionsBundle.message("offline.view.title") +
                                 " (" + (name != null ? name : InspectionsBundle.message("offline.view.editor.settings.title")) + ")");
+                        Disposer.register(project, view);
                     });
                 }
             });

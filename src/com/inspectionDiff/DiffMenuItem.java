@@ -1,6 +1,5 @@
 package com.inspectionDiff;
 
-import com.intellij.codeInspection.inferNullity.InferNullityAnnotationsAction;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.application.ApplicationManager;

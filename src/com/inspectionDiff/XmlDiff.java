@@ -36,10 +36,10 @@ public class XmlDiff {
         Path outputRemoved = Paths.get(outRemoved);
         Files.createDirectories(outputRemoved);
 
-        Map<String, Path> leftFiles = Files.walk(leftFolder)
+        Map<String, Path> leftFiles = Files.list(leftFolder)
                 .filter(p -> p.toString().toLowerCase().endsWith(".xml"))
                 .collect(Collectors.toMap(f -> f.getFileName().toString(), f -> f));
-        Map<String, Path> rightFiles = Files.walk(rightFolder)
+        Map<String, Path> rightFiles = Files.list(rightFolder)
                 .filter(p -> p.toString().toLowerCase().endsWith(".xml"))
                 .collect(Collectors.toMap(f -> f.getFileName().toString(), f -> f));
 
@@ -177,7 +177,7 @@ public class XmlDiff {
         return res;
     }
 
-    private static void write(Path output, Document document) throws ParserConfigurationException, TransformerException, IOException {
+    private static void write(Path output, Document document) throws TransformerException, IOException {
         DOMSource source = new DOMSource(document);
         StreamResult result = new StreamResult(Files.newOutputStream(output));
         Transformer transformer = TransformerFactory.newInstance().newTransformer();

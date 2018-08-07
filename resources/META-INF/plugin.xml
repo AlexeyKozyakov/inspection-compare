@@ -29,7 +29,7 @@
   </extensions>
 
   <actions>
-    <action class="com.inspectionDiff.DiffMenuItem" id="FilterDiffAction" text="Filter/diff inspection result" >
+    <action class="com.inspectionDiff.DiffMenuItem" id="FilterDiffAction" text="Filter/diff inspection Results..." >
       <add-to-group group-id="InspectCodeGroup" anchor="after" relative-to-action="ViewOfflineInspection"/>
     </action>
   </actions>
