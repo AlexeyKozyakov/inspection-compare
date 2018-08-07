@@ -8,7 +8,6 @@ import com.intellij.ui.components.panels.VerticalLayout;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;

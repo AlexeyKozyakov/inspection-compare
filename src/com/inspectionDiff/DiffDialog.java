@@ -45,7 +45,7 @@ public class DiffDialog extends DialogWrapper {
     protected DiffDialog(@Nullable Project project, boolean canBeParent) {
         super(project, canBeParent);
         init();
-        setTitle("Test");
+        setTitle("Filter/diff inspection result");
     }
 
     @Nullable

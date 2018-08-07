@@ -71,6 +71,9 @@ public class XmlDiff {
     private static void diffContent(Map<String, Path> leftFiles, Map<String, Path> rightFiles, Path outputAdded, Path outputRemoved, String filter, XmlDiffResult compareResult, ProgressIndicator indicator ) throws ParserConfigurationException, TransformerException, SAXException, IOException {
         int progress = 0;
         for (Map.Entry<String, Path> file : leftFiles.entrySet()) {
+            if (indicator.isCanceled()) {
+                return;
+            }
             if (rightFiles.containsKey(file.getKey())) {
                 compareResult.add(compareFiles(file.getValue(), rightFiles.get(file.getKey()), outputAdded.resolve(file.getKey()),
                         outputRemoved.resolve(file.getKey()), filter));
