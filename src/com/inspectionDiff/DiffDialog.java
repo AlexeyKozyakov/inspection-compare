@@ -65,28 +65,28 @@ public class DiffDialog extends DialogWrapper {
     @Override
     protected ValidationInfo doValidate() {
         if (dialogPanel.getBaseAsStr().isEmpty()) {
-            return new ValidationInfo("Choose baseline folder", dialogPanel.getBaseline());
+            return new ValidationInfo("Choose baseline folder", dialogPanel.getBaseline().getTextField());
         }
         if (!Files.exists(Paths.get(dialogPanel.getBaseAsStr())) ) {
-            return new ValidationInfo("Baseline folder does not exist", dialogPanel.getBaseline());
+            return new ValidationInfo("Baseline folder does not exist", dialogPanel.getBaseline().getTextField());
         }
         if (dialogPanel.getUpdatedAsStr().isEmpty()) {
-            return new ValidationInfo("Choose updated folder", dialogPanel.getUpdated());
+            return new ValidationInfo("Choose updated folder", dialogPanel.getUpdated().getTextField());
         }
         if (!Files.exists(Paths.get(dialogPanel.getUpdatedAsStr())) ) {
-            return new ValidationInfo("Updated folder does not exist", dialogPanel.getUpdated());
+            return new ValidationInfo("Updated folder does not exist", dialogPanel.getUpdated().getTextField());
         }
         if (dialogPanel.getAddedWarningsAsStr().isEmpty()) {
-            return new ValidationInfo("Choose added warnings out folder", dialogPanel.getAddedWarnings());
+            return new ValidationInfo("Choose added warnings out folder", dialogPanel.getAddedWarnings().getTextField());
         }
         if (dialogPanel.getRemovedWarningsAsStr().isEmpty()) {
-            return new ValidationInfo("Choose removed warnings out folder", dialogPanel.getRemovedWarnings());
+            return new ValidationInfo("Choose removed warnings out folder", dialogPanel.getRemovedWarnings().getTextField());
         }
         if (dialogPanel.getBaseAsStr().equals(dialogPanel.getUpdatedAsStr())) {
-            return new ValidationInfo("Choose different baseline and updated folders", dialogPanel.getBaseline());
+            return new ValidationInfo("Choose different baseline and updated folders", dialogPanel.getBaseline().getTextField());
         }
         if (dialogPanel.getAddedWarningsAsStr().equals(dialogPanel.getRemovedWarningsAsStr())) {
-            return new ValidationInfo("Choose different output folders", dialogPanel.getAddedWarnings());
+            return new ValidationInfo("Choose different output folders", dialogPanel.getAddedWarnings().getTextField());
         }
         return null;
     }

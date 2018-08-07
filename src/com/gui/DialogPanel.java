@@ -83,7 +83,4 @@ public class DialogPanel extends JPanel {
         return removedWarnings;
     }
 
-    public JTextField getFilter() {
-        return filter;
-    }
 }
