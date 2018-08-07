@@ -3,10 +3,15 @@ package com.gui;
 import com.intellij.openapi.fileChooser.FileChooserDescriptor;
 import com.intellij.openapi.ui.TextBrowseFolderListener;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
+import com.intellij.ui.DocumentAdapter;
 import com.intellij.ui.components.panels.VerticalLayout;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.*;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class DialogPanel extends JPanel {
     private JLabel baselineLabel = new JLabel("Baseline inspection result");
@@ -19,6 +24,8 @@ public class DialogPanel extends JPanel {
     private JTextField filter = new JTextField();
     private TextFieldWithBrowseButton addedWarnings = new TextFieldWithBrowseButton();
     private TextFieldWithBrowseButton removedWarnings = new TextFieldWithBrowseButton();
+    private Path basePath;
+    private Path updatedPath;
     public DialogPanel() {
         baseline.addBrowseFolderListener(new TextBrowseFolderListener(new FileChooserDescriptor(false, true,
                 false, false, false, false)));
@@ -28,6 +35,26 @@ public class DialogPanel extends JPanel {
                 false, false, false, false)));
         removedWarnings.addBrowseFolderListener(new TextBrowseFolderListener(new FileChooserDescriptor(false, true,
                 false, false, false, false)));
+        baseline.getTextField().getDocument().addDocumentListener(new DocumentAdapter() {
+            @Override
+            protected void textChanged(DocumentEvent e) {
+                basePath = Paths.get(baseline.getText());
+                if (!updated.getText().isEmpty()) {
+                    updatedPath = Paths.get(updated.getText());
+                    generateOutPaths();
+                }
+            }
+        });
+        updated.getTextField().getDocument().addDocumentListener(new DocumentAdapter() {
+            @Override
+            protected void textChanged(DocumentEvent e) {
+                updatedPath = Paths.get(updated.getText());
+                if (!baseline.getText().isEmpty()) {
+                    basePath = Paths.get(baseline.getText());
+                    generateOutPaths();
+                }
+            }
+        });
         setPreferredSize(new Dimension(800, 500));
         VerticalLayout layout = new VerticalLayout(1);
         add(baselineLabel);
@@ -51,6 +78,10 @@ public class DialogPanel extends JPanel {
         layout.addLayoutComponent(removedWarningsLabel, null);
         layout.addLayoutComponent(removedWarnings, null);
         setLayout(layout);
+    }
+    private void generateOutPaths() {
+        addedWarnings.setText(basePath.getParent().resolve("from_" + basePath.getFileName() + "_to_" + updatedPath.getFileName()).toString());
+        removedWarnings.setText(basePath.getParent().resolve("from_" + updatedPath.getFileName() + "_to_" + basePath.getFileName()).toString());
     }
     public String getBaseAsStr() {
         return baseline.getText();
