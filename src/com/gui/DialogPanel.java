@@ -3,12 +3,12 @@ package com.gui;
 import com.intellij.openapi.fileChooser.FileChooserDescriptor;
 import com.intellij.openapi.ui.TextBrowseFolderListener;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
+import com.intellij.ui.components.panels.VerticalLayout;
 
 import javax.swing.*;
 import java.awt.*;
 
 public class DialogPanel extends JPanel {
-    private JPanel container = new JPanel();
     private JLabel baselineLabel = new JLabel("Baseline inspection result");
     private JLabel updatedLabel = new JLabel("Updated inspection result");
     private JLabel filterLabel = new JLabel("Filter");
@@ -28,19 +28,29 @@ public class DialogPanel extends JPanel {
                 false, false, false, false)));
         removedWarnings.addBrowseFolderListener(new TextBrowseFolderListener(new FileChooserDescriptor(false, true,
                 false, false, false, false)));
-        container.add(baselineLabel);
-        container.add(baseline);
-        container.add(updatedLabel);
-        container.add(updated);
-        container.add(filterLabel);
-        container.add(filter);
-        container.add(addedWarningsLabel);
-        container.add(addedWarnings);
-        container.add(removedWarningsLabel);
-        container.add(removedWarnings);
-        container.setLayout(new GridLayout(10, 1));
-        container.setPreferredSize(new Dimension(800, 600));
-        add(container);
+        setPreferredSize(new Dimension(800, 500));
+        VerticalLayout layout = new VerticalLayout(1);
+        add(baselineLabel);
+        add(baseline);
+        add(updatedLabel);
+        add(updated);
+        add(filterLabel);
+        add(filter);
+        add(addedWarningsLabel);
+        add(addedWarnings);
+        add(removedWarningsLabel);
+        add(removedWarnings);
+        layout.addLayoutComponent(baselineLabel, null);
+        layout.addLayoutComponent(baseline, null);
+        layout.addLayoutComponent(updatedLabel, null);
+        layout.addLayoutComponent(updated, null);
+        layout.addLayoutComponent(filterLabel, null);
+        layout.addLayoutComponent(filter, null);
+        layout.addLayoutComponent(addedWarningsLabel, null);
+        layout.addLayoutComponent(addedWarnings, null);
+        layout.addLayoutComponent(removedWarningsLabel, null);
+        layout.addLayoutComponent(removedWarnings, null);
+        setLayout(layout);
     }
     public String getBaseAsStr() {
         return baseline.getText();
@@ -73,7 +83,7 @@ public class DialogPanel extends JPanel {
         return removedWarnings;
     }
 
-    public JPanel getContainer() {
-        return container;
+    public JTextField getFilter() {
+        return filter;
     }
 }

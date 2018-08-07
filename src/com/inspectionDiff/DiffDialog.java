@@ -27,6 +27,7 @@ import com.intellij.openapi.ui.ValidationInfo;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.openapi.vfs.VirtualFileManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -62,14 +63,15 @@ public class DiffDialog extends DialogWrapper {
         return new Action[] { runAction, getCancelAction()};
     }
 
+
     @Nullable
     @Override
     protected ValidationInfo doValidate() {
         if (dialogPanel.getBaseAsStr().isEmpty()) {
-            return new ValidationInfo("Choose baseline folder", dialogPanel);
+            return new ValidationInfo("Choose baseline folder", dialogPanel.getBaseline());
         }
         if (!Files.exists(Paths.get(dialogPanel.getBaseAsStr())) ) {
-            return new ValidationInfo("Baseline folder does not exist", dialogPanel);
+            return new ValidationInfo("Baseline folder does not exist", dialogPanel.getBaseline());
         }
         if (dialogPanel.getUpdatedAsStr().isEmpty()) {
             return new ValidationInfo("Choose updated folder", dialogPanel.getUpdated());
@@ -102,7 +104,6 @@ public class DiffDialog extends DialogWrapper {
 
         public RunAction() {
             super("Run", 0);
-            setResizable(false);
         }
 
         @Override
@@ -129,7 +130,6 @@ public class DiffDialog extends DialogWrapper {
                 dialogPanel.grabFocus();
             }
         }
-
 
         private void sendNotification(XmlDiffResult result, Project project) {
             Notifications.Bus.notify(new Notification("Plugins notifications", null, "Completed!", null,
