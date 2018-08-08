@@ -114,7 +114,8 @@ public class DiffDialog extends DialogWrapper {
 
         @Override
         public void actionPerformed(ActionEvent event) {
-            if (doValidate() == null) {
+            ValidationInfo validation = doValidate();
+            if (validation == null) {
                 ProgressManager.getInstance().run(new Task.Backgroundable(project, "Comparing") {
                     @Override
                     public void run(@NotNull ProgressIndicator indicator) {
@@ -134,7 +135,7 @@ public class DiffDialog extends DialogWrapper {
                 close(0);
             } else {
                 startTrackingValidation();
-                dialogPanel.grabFocus();
+                validation.component.grabFocus();
             }
         }
 
