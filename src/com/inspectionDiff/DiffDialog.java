@@ -8,7 +8,6 @@ import com.intellij.codeInspection.offline.OfflineProblemDescriptor;
 import com.intellij.codeInspection.offlineViewer.OfflineViewParseUtil;
 import com.intellij.codeInspection.ui.InspectionResultsView;
 import com.intellij.ide.DataManager;
-import com.intellij.javaee.model.enums.Dispatcher;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationType;
 import com.intellij.notification.Notifications;
@@ -26,15 +25,20 @@ import com.intellij.openapi.ui.DialogWrapper;
 import com.gui.DialogPanel;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.ui.ValidationInfo;
-import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.openapi.wm.ToolWindow;
+import com.intellij.openapi.wm.ToolWindowAnchor;
+import com.intellij.openapi.wm.ToolWindowManager;
+import com.intellij.ui.content.Content;
+import com.intellij.ui.content.ContentManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -45,8 +49,11 @@ public class DiffDialog extends DialogWrapper {
     private final DialogPanel dialogPanel = new DialogPanel();
     private String addedWarnings;
     private String removedWarnings;
+    private Project project;
+    private XmlDiffResult result;
     protected DiffDialog(@Nullable Project project, boolean canBeParent) {
         super(project, canBeParent);
+        this.project = project;
         init();
         setTitle("Filter/diff inspection result");
     }
@@ -108,17 +115,17 @@ public class DiffDialog extends DialogWrapper {
         @Override
         public void actionPerformed(ActionEvent event) {
             if (doValidate() == null) {
-                DataContext dataContext = DataManager.getInstance().getDataContext(dialogPanel);
-                Project project = DataKeys.PROJECT.getData(dataContext);
                 ProgressManager.getInstance().run(new Task.Backgroundable(project, "Comparing") {
                     @Override
                     public void run(@NotNull ProgressIndicator indicator) {
                         try {
                             addedWarnings = dialogPanel.getAddedWarningsAsStr();
                             removedWarnings = dialogPanel.getRemovedWarningsAsStr();
-                            XmlDiffResult result = XmlDiff.compareFolders(dialogPanel.getBaseAsStr(), dialogPanel.getUpdatedAsStr(), addedWarnings,
+                            result = XmlDiff.compareFolders(dialogPanel.getBaseAsStr(), dialogPanel.getUpdatedAsStr(), addedWarnings,
                                     removedWarnings, dialogPanel.getFilterAsStr(), indicator);
                             sendNotification(result, project);
+                        } catch (AccessDeniedException e) {
+                            Notifications.Bus.notify(new Notification("Plugins notifications", "Error", "Access to folder denied", NotificationType.ERROR));
                         } catch (Exception e) {
                             e.printStackTrace();
                         }

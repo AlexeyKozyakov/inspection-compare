@@ -1,5 +1,6 @@
 package com.inspectionDiff;
 import com.intellij.openapi.progress.ProgressIndicator;
+import com.sun.management.UnixOperatingSystemMXBean;
 import org.jetbrains.annotations.NotNull;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -17,6 +18,9 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.IOException;
+import java.io.InputStream;
+import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -28,13 +32,18 @@ public class XmlDiff {
 
     public static XmlDiffResult compareFolders(@NotNull String base, @NotNull String updated,
                                                @NotNull String outAdded, @NotNull String outRemoved, @Nullable String filter, @Nullable ProgressIndicator indicator) throws IOException, TransformerException, ParserConfigurationException, SAXException {
+        OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
         XmlDiffResult compareResult = new XmlDiffResult();
         Path leftFolder = Paths.get(base);
         Path rightFolder = Paths.get(updated);
         Path outputAdded = Paths.get(outAdded);
-        Files.createDirectories(outputAdded);
+        if (Files.notExists(outputAdded)) {
+            Files.createDirectories(outputAdded);
+        }
         Path outputRemoved = Paths.get(outRemoved);
-        Files.createDirectories(outputRemoved);
+        if (Files.notExists(outputRemoved)) {
+            Files.createDirectories(outputRemoved);
+        }
 
         Map<String, Path> leftFiles = Files.list(leftFolder)
                 .filter(p -> p.toString().toLowerCase().endsWith(".xml"))
@@ -45,7 +54,6 @@ public class XmlDiff {
 
         diffFiles(leftFiles, rightFiles, outputAdded, outputRemoved, compareResult, filter);
         diffContent(leftFiles, rightFiles, outputAdded, outputRemoved, filter, compareResult, indicator);
-
         Files.copy(leftFolder.resolve(".descriptions.xml"), outputAdded.resolve(".descriptions.xml"), StandardCopyOption.REPLACE_EXISTING);
         Files.copy(leftFolder.resolve(".descriptions.xml"), outputRemoved.resolve(".descriptions.xml"), StandardCopyOption.REPLACE_EXISTING);
         indicator.setFraction(1.0);
@@ -187,11 +195,15 @@ public class XmlDiff {
         transformer.setOutputProperty(javax.xml.transform.OutputKeys.INDENT, "yes");
         transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
         transformer.transform(source, result);
+        result.getOutputStream().close();
     }
 
     private static Document read(Path path) throws IOException, ParserConfigurationException, SAXException {
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         DocumentBuilder builder = factory.newDocumentBuilder();
-        return builder.parse(Files.newInputStream(path));
+        InputStream inputStream = Files.newInputStream(path);
+        Document doc = builder.parse(inputStream);
+        inputStream.close();
+        return doc;
     }
 }
