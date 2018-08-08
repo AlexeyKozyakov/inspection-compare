@@ -51,11 +51,14 @@ public class DiffDialog extends DialogWrapper {
     private String removedWarnings;
     private Project project;
     private XmlDiffResult result;
+    private boolean validationFlag = false;
     protected DiffDialog(@Nullable Project project, boolean canBeParent) {
         super(project, canBeParent);
         this.project = project;
         init();
         setTitle("Filter/diff inspection result");
+        setValidationDelay(100);
+        startTrackingValidation();
     }
 
     @Nullable
@@ -73,28 +76,31 @@ public class DiffDialog extends DialogWrapper {
     @Nullable
     @Override
     protected ValidationInfo doValidate() {
-        if (dialogPanel.getBaseAsStr().isEmpty()) {
-            return new ValidationInfo("Choose baseline folder", dialogPanel.getBaseline().getTextField());
+        //don't show message about empty fields before button is pressed
+        if (validationFlag) {
+            if (dialogPanel.getBaseAsStr().isEmpty()) {
+                return new ValidationInfo("Choose baseline folder", dialogPanel.getBaseline().getTextField());
+            }
+            if (dialogPanel.getUpdatedAsStr().isEmpty()) {
+                return new ValidationInfo("Choose updated folder", dialogPanel.getUpdated().getTextField());
+            }
+            if (dialogPanel.getAddedWarningsAsStr().isEmpty()) {
+                return new ValidationInfo("Choose added warnings out folder", dialogPanel.getAddedWarnings().getTextField());
+            }
+            if (dialogPanel.getRemovedWarningsAsStr().isEmpty()) {
+                return new ValidationInfo("Choose removed warnings out folder", dialogPanel.getRemovedWarnings().getTextField());
+            }
         }
         if (!Files.exists(Paths.get(dialogPanel.getBaseAsStr())) ) {
             return new ValidationInfo("Baseline folder does not exist", dialogPanel.getBaseline().getTextField());
         }
-        if (dialogPanel.getUpdatedAsStr().isEmpty()) {
-            return new ValidationInfo("Choose updated folder", dialogPanel.getUpdated().getTextField());
-        }
         if (!Files.exists(Paths.get(dialogPanel.getUpdatedAsStr())) ) {
             return new ValidationInfo("Updated folder does not exist", dialogPanel.getUpdated().getTextField());
         }
-        if (dialogPanel.getAddedWarningsAsStr().isEmpty()) {
-            return new ValidationInfo("Choose added warnings out folder", dialogPanel.getAddedWarnings().getTextField());
-        }
-        if (dialogPanel.getRemovedWarningsAsStr().isEmpty()) {
-            return new ValidationInfo("Choose removed warnings out folder", dialogPanel.getRemovedWarnings().getTextField());
-        }
-        if (dialogPanel.getBaseAsStr().equals(dialogPanel.getUpdatedAsStr())) {
+        if (!dialogPanel.getBaseAsStr().isEmpty() && dialogPanel.getBaseAsStr().equals(dialogPanel.getUpdatedAsStr())) {
             return new ValidationInfo("Choose different baseline and updated folders", dialogPanel.getBaseline().getTextField());
         }
-        if (dialogPanel.getAddedWarningsAsStr().equals(dialogPanel.getRemovedWarningsAsStr())) {
+        if (!dialogPanel.getAddedWarningsAsStr().isEmpty() && dialogPanel.getAddedWarningsAsStr().equals(dialogPanel.getRemovedWarningsAsStr())) {
             return new ValidationInfo("Choose different output folders", dialogPanel.getAddedWarnings().getTextField());
         }
         return null;
@@ -115,7 +121,9 @@ public class DiffDialog extends DialogWrapper {
         @Override
         public void actionPerformed(ActionEvent event) {
             ValidationInfo validation = doValidate();
-            if (validation == null) {
+            //check if input fields is empty
+            boolean emptyInput = dialogPanel.getBaseAsStr().isEmpty() || dialogPanel.getUpdatedAsStr().isEmpty() || dialogPanel.getAddedWarningsAsStr().isEmpty() || dialogPanel.getRemovedWarningsAsStr().isEmpty();
+            if (validation == null && !emptyInput) {
                 ProgressManager.getInstance().run(new Task.Backgroundable(project, "Comparing") {
                     @Override
                     public void run(@NotNull ProgressIndicator indicator) {
@@ -134,11 +142,11 @@ public class DiffDialog extends DialogWrapper {
                 });
                 close(0);
             } else {
-                startTrackingValidation();
+                validationFlag = true;
                 validation.component.grabFocus();
             }
         }
-
+        //send notification with compare results
         private void sendNotification(XmlDiffResult result, Project project) {
             Notifications.Bus.notify(new Notification("Plugins notifications", null, "Completed!", null,
                     "Baseline warnings count: " + result.baseProblems + "<br>" +

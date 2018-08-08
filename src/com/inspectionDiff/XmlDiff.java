@@ -32,7 +32,6 @@ public class XmlDiff {
 
     public static XmlDiffResult compareFolders(@NotNull String base, @NotNull String updated,
                                                @NotNull String outAdded, @NotNull String outRemoved, @Nullable String filter, @Nullable ProgressIndicator indicator) throws IOException, TransformerException, ParserConfigurationException, SAXException {
-        OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
         XmlDiffResult compareResult = new XmlDiffResult();
         Path leftFolder = Paths.get(base);
         Path rightFolder = Paths.get(updated);
@@ -76,6 +75,7 @@ public class XmlDiff {
         return compareResult;
     }
 
+    //compare files with the same names
     private static void diffContent(Map<String, Path> leftFiles, Map<String, Path> rightFiles, Path outputAdded, Path outputRemoved, String filter, XmlDiffResult compareResult, ProgressIndicator indicator ) throws ParserConfigurationException, TransformerException, SAXException, IOException {
         int progress = 0;
         for (Map.Entry<String, Path> file : leftFiles.entrySet()) {
@@ -91,6 +91,7 @@ public class XmlDiff {
         }
     }
 
+    //check which files are added or removed
     private static void diffFiles(Map<String, Path> leftFiles, Map<String, Path> rightFiles, Path outputAdded, Path outputRemoved, XmlDiffResult compareResult, String filter) throws ParserConfigurationException, SAXException, IOException, TransformerException {
         Map<String, Path> leftSansRight = new HashMap<>(leftFiles);
         leftSansRight.keySet().removeAll(rightFiles.keySet());
