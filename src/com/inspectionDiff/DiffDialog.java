@@ -1,5 +1,8 @@
 package com.inspectionDiff;
 
+import com.gui.FilterDiffPanel;
+import com.gui.DialogTabs;
+import com.gui.FilterPanel;
 import com.intellij.analysis.PerformAnalysisInBackgroundOption;
 import com.intellij.codeInspection.InspectionApplication;
 import com.intellij.codeInspection.InspectionsBundle;
@@ -10,11 +13,8 @@ import com.intellij.codeInspection.ui.InspectionResultsView;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationType;
 import com.intellij.notification.Notifications;
-import com.intellij.openapi.actionSystem.DataContext;
-import com.intellij.openapi.actionSystem.DataKeys;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ReadAction;
-import com.intellij.openapi.fileChooser.FileChooserDescriptor;
 import com.intellij.openapi.fileEditor.impl.LoadTextUtil;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -22,17 +22,11 @@ import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.DialogWrapper;
-import com.gui.DialogPanel;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.ui.ValidationInfo;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.openapi.wm.ToolWindow;
-import com.intellij.openapi.wm.ToolWindowAnchor;
-import com.intellij.openapi.wm.ToolWindowManager;
-import com.intellij.ui.content.Content;
-import com.intellij.ui.content.ContentManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -48,19 +42,23 @@ import java.util.Map;
 import java.util.Set;
 
 import static com.intellij.openapi.ui.Messages.OK;
-import static com.intellij.openapi.ui.Messages.showOkCancelDialog;
 
 public class DiffDialog extends DialogWrapper {
-    private final DialogPanel dialogPanel;
+    private final DialogTabs dialogTabs;
+    private final FilterDiffPanel filterDiffPanel;
+    private final FilterPanel filterPanel;
     private String addedWarnings;
     private String removedWarnings;
     private Project project;
     private XmlDiffResult result;
-    private boolean validationFlag = false;
+    private boolean validationFlagFilterDiff = false;
+    private boolean validationFlagFilterOnly = false;
     protected DiffDialog(@Nullable Project project, boolean canBeParent) {
         super(project, canBeParent);
         this.project = project;
-        dialogPanel = new DialogPanel(project);
+        dialogTabs = new DialogTabs(project);
+        filterDiffPanel = dialogTabs.getFilterDiffPanel();
+        filterPanel = dialogTabs.getFilterPanel();
         init();
         setTitle("Filter/diff inspection Results");
         setModal(false);
@@ -71,7 +69,7 @@ public class DiffDialog extends DialogWrapper {
     @Nullable
     @Override
     protected JComponent createCenterPanel() {
-        return dialogPanel;
+        return dialogTabs;
     }
 
     @NotNull
@@ -83,41 +81,57 @@ public class DiffDialog extends DialogWrapper {
     @Nullable
     @Override
     protected ValidationInfo doValidate() {
-        //don't show message about empty fields before button is pressed
-        if (validationFlag) {
-            if (dialogPanel.getBaseAsStr().isEmpty()) {
-                return new ValidationInfo("Choose baseline folder", dialogPanel.getBaseline().getTextField());
-            }
-            if (dialogPanel.getUpdatedAsStr().isEmpty()) {
-                return new ValidationInfo("Choose updated folder", dialogPanel.getUpdated().getTextField());
-            }
-            if (dialogPanel.getAddedWarningsAsStr().isEmpty()) {
-                return new ValidationInfo("Choose added warnings out folder", dialogPanel.getAddedWarnings().getTextField());
-            }
-            if (dialogPanel.getRemovedWarningsAsStr().isEmpty()) {
-                return new ValidationInfo("Choose removed warnings out folder", dialogPanel.getRemovedWarnings().getTextField());
-            }
+        if (dialogTabs.getSelectedIndex() == 0) {
+            return validateFilterDiff();
+        } else {
+            return null;
         }
-        if (!Files.exists(Paths.get(dialogPanel.getBaseAsStr())) ) {
-            return new ValidationInfo("Baseline folder does not exist", dialogPanel.getBaseline().getTextField());
-        }
-        if (!Files.exists(Paths.get(dialogPanel.getUpdatedAsStr())) ) {
-            return new ValidationInfo("Updated folder does not exist", dialogPanel.getUpdated().getTextField());
-        }
-        if (!dialogPanel.getBaseAsStr().isEmpty() && dialogPanel.getBaseAsStr().equals(dialogPanel.getUpdatedAsStr())) {
-            return new ValidationInfo("Choose different baseline and updated folders", dialogPanel.getBaseline().getTextField());
-        }
-        if (!dialogPanel.getAddedWarningsAsStr().isEmpty() && dialogPanel.getAddedWarningsAsStr().equals(dialogPanel.getRemovedWarningsAsStr())) {
-            return new ValidationInfo("Choose different output folders", dialogPanel.getAddedWarnings().getTextField());
-        }
-        return null;
     }
 
     @Nullable
     @Override
     public JComponent getPreferredFocusedComponent() {
-        return dialogPanel.getBaseline();
+        return filterDiffPanel.getBaseline();
     }
+
+    private ValidationInfo validateFilterDiff() {
+        //don't show message about empty fields before button is pressed
+        if (validationFlagFilterDiff) {
+            if (filterDiffPanel.getBaseAsStr().isEmpty()) {
+                return new ValidationInfo("Choose baseline folder", filterDiffPanel.getBaseline().getTextField());
+            }
+            if (filterDiffPanel.getUpdatedAsStr().isEmpty()) {
+                return new ValidationInfo("Choose updated folder", filterDiffPanel.getUpdated().getTextField());
+            }
+            if (filterDiffPanel.getAddedWarningsAsStr().isEmpty()) {
+                return new ValidationInfo("Choose added warnings out folder", filterDiffPanel.getAddedWarnings().getTextField());
+            }
+            if (filterDiffPanel.getRemovedWarningsAsStr().isEmpty()) {
+                return new ValidationInfo("Choose removed warnings out folder", filterDiffPanel.getRemovedWarnings().getTextField());
+            }
+        }
+        if (!Files.exists(Paths.get(filterDiffPanel.getBaseAsStr())) ) {
+            return new ValidationInfo("Baseline folder does not exist", filterDiffPanel.getBaseline().getTextField());
+        }
+        if (!Files.exists(Paths.get(filterDiffPanel.getUpdatedAsStr())) ) {
+            return new ValidationInfo("Updated folder does not exist", filterDiffPanel.getUpdated().getTextField());
+        }
+        if (!filterDiffPanel.getBaseAsStr().isEmpty() && filterDiffPanel.getBaseAsStr().equals(filterDiffPanel.getUpdatedAsStr())) {
+            return new ValidationInfo("Choose different baseline and updated folders", filterDiffPanel.getBaseline().getTextField());
+        }
+        if (!filterDiffPanel.getAddedWarningsAsStr().isEmpty() && filterDiffPanel.getAddedWarningsAsStr().equals(filterDiffPanel.getRemovedWarningsAsStr())) {
+            return new ValidationInfo("Choose different output folders", filterDiffPanel.getAddedWarnings().getTextField());
+        }
+        return null;
+    }
+
+/*    private ValidationInfo validateFilterOnly() {
+        if (validationFlagFilterOnly) {
+            if (filterPanel.getInspectionResultAsStr().isEmpty()) {
+                return new ValidationInfo("Choose inspection results folder");
+            }
+        }
+    }*/
 
     protected class RunAction extends DialogWrapperExitAction {
 
@@ -127,13 +141,21 @@ public class DiffDialog extends DialogWrapper {
 
         @Override
         public void actionPerformed(ActionEvent event) {
+            if (dialogTabs.getSelectedIndex() == 0) {
+                doFilterDiff();
+            } else {
+                doFilterOnly();
+            }
+        }
+
+        private void doFilterDiff() {
             ValidationInfo validation = doValidate();
             //check if input fields is empty
-            boolean emptyInput = dialogPanel.getBaseAsStr().isEmpty() || dialogPanel.getUpdatedAsStr().isEmpty() || dialogPanel.getAddedWarningsAsStr().isEmpty() || dialogPanel.getRemovedWarningsAsStr().isEmpty();
+            boolean emptyInput = filterDiffPanel.getBaseAsStr().isEmpty() || filterDiffPanel.getUpdatedAsStr().isEmpty() || filterDiffPanel.getAddedWarningsAsStr().isEmpty() || filterDiffPanel.getRemovedWarningsAsStr().isEmpty();
             if (validation == null && !emptyInput) {
                 //check if output folders exists and contain files
-                Path addedDir = Paths.get(dialogPanel.getAddedWarningsAsStr());
-                Path removedDir = Paths.get(dialogPanel.getAddedWarningsAsStr());
+                Path addedDir = Paths.get(filterDiffPanel.getAddedWarningsAsStr());
+                Path removedDir = Paths.get(filterDiffPanel.getAddedWarningsAsStr());
                 try {
                     if (Files.exists(addedDir) && Files.list(addedDir).count() > 0 || Files.exists(removedDir) && Files.list(removedDir).count() > 0) {
 
@@ -143,30 +165,35 @@ public class DiffDialog extends DialogWrapper {
                         }
                     }
                 } catch (IOException e) {
-                    Notifications.Bus.notify(new Notification("Plugins notifications", "Error", e.getMessage(), NotificationType.ERROR));
+                    Notifications.Bus.notify(new Notification("Plugins notifications", "Error", e.toString(), NotificationType.ERROR));
                 }
                 ProgressManager.getInstance().run(new Task.Backgroundable(project, "Comparing") {
                     @Override
                     public void run(@NotNull ProgressIndicator indicator) {
                         try {
-                            addedWarnings = dialogPanel.getAddedWarningsAsStr();
-                            removedWarnings = dialogPanel.getRemovedWarningsAsStr();
-                            result = XmlDiff.compareFolders(dialogPanel.getBaseAsStr(), dialogPanel.getUpdatedAsStr(), addedWarnings,
-                                    removedWarnings, dialogPanel.getFilterAsStr(), indicator);
+                            addedWarnings = filterDiffPanel.getAddedWarningsAsStr();
+                            removedWarnings = filterDiffPanel.getRemovedWarningsAsStr();
+                            result = XmlDiff.compareFolders(filterDiffPanel.getBaseAsStr(), filterDiffPanel.getUpdatedAsStr(), addedWarnings,
+                                    removedWarnings, filterDiffPanel.getFilterAsStr(), indicator);
                             sendNotification(result, project);
                         } catch (AccessDeniedException e) {
                             Notifications.Bus.notify(new Notification("Plugins notifications", "Error", "Access to folder denied", NotificationType.ERROR));
                         } catch (Exception e) {
-                            Notifications.Bus.notify(new Notification("Plugins notifications", "Error", e.getMessage(), NotificationType.ERROR));
+                            Notifications.Bus.notify(new Notification("Plugins notifications", "Error", e.toString(), NotificationType.ERROR));
                         }
                     }
                 });
                 close(0);
             } else {
-                validationFlag = true;
+                validationFlagFilterDiff = true;
                 validation.component.grabFocus();
             }
         }
+
+        private void doFilterOnly() {
+            //to do
+        }
+
         //send notification with compare results
         private void sendNotification(XmlDiffResult result, Project project) {
             Notifications.Bus.notify(new Notification("Plugins notifications", null, "Completed!", null,
@@ -227,7 +254,7 @@ public class DiffDialog extends DialogWrapper {
                 public void onSuccess() {
                     ApplicationManager.getApplication().invokeLater(() -> {
                         final String name = profileName[0];
-                        InspectionResultsView view = ViewOfflineResultsAction.showOfflineView(project, name, resMap, InspectionsBundle.message("offline.view.title") +
+                        ViewOfflineResultsAction.showOfflineView(project, name, resMap, InspectionsBundle.message("offline.view.title") +
                                 " (" + (name != null ? name : InspectionsBundle.message("offline.view.editor.settings.title")) + ")");
                     });
                 }

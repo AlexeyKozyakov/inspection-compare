@@ -26,6 +26,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class XmlDiff {
@@ -134,7 +135,7 @@ public class XmlDiff {
                 Element description = (Element) problem.getElementsByTagName("description").item(0);
                 if(description != null) {
                     totalCount++;
-                    if(!description.getTextContent().contains(substring)) {
+                    if(!Pattern.compile(substring).matcher(description.getTextContent()).find()) {
                         doc.removeChild(problem);
                     } else {
                         filteredCount++;

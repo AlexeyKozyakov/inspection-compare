@@ -5,50 +5,48 @@ import com.intellij.icons.AllIcons;
 import com.intellij.openapi.fileChooser.FileChooserDescriptor;
 import com.intellij.openapi.fileTypes.StdFileTypes;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.ui.Splitter;
 import com.intellij.openapi.ui.TextBrowseFolderListener;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.DocumentAdapter;
 import com.intellij.ui.EditorTextField;
+import com.intellij.ui.JBColor;
+import com.intellij.ui.LanguageTextField;
+import com.intellij.ui.components.JBLabel;
+import com.intellij.ui.components.JBPanel;
 import com.intellij.ui.components.panels.VerticalLayout;
-import com.intellij.uiDesigner.core.Spacer;
-import com.twelvemonkeys.image.BufferedImageIcon;
-import org.intellij.lang.annotations.RegExp;
+import com.intellij.util.ui.UIUtil;
 import org.intellij.lang.regexp.RegExpFileType;
-import org.intellij.lang.regexp.RegExpSyntaxHighlighterFactory;
+import org.intellij.lang.regexp.RegExpLanguage;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
-import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-public class DialogPanel extends JPanel {
+public class FilterDiffPanel extends JBPanel {
     private Project project;
-    private JLabel baselineLabel = new JLabel("Baseline inspection result");
-    private JLabel updatedLabel = new JLabel("Updated inspection result");
-    private JLabel filterLabel = new JLabel("Filter");
-    private JLabel addedWarningsLabel = new JLabel("Added warnings output");
-    private JLabel removedWarningsLabel = new JLabel("Removed warnings output");
+    private JBLabel baselineLabel = new JBLabel("Baseline inspection result");
+    private JBLabel updatedLabel = new JBLabel("Updated inspection result");
+    private JBLabel filterLabel = new JBLabel("Filter");
+    private JBLabel addedWarningsLabel = new JBLabel("Added warnings output");
+    private JBLabel removedWarningsLabel = new JBLabel("Removed warnings output");
     private TextFieldWithBrowseButton baseline = new TextFieldWithBrowseButton();
     private TextFieldWithBrowseButton updated = new TextFieldWithBrowseButton();
     private EditorTextField filter;
     private TextFieldWithBrowseButton addedWarnings = new TextFieldWithBrowseButton();
     private TextFieldWithBrowseButton removedWarnings = new TextFieldWithBrowseButton();
     private JButton swapButton = new JButton();
-    private JPanel buttonContainer = new JPanel();
+    private JBPanel buttonContainer = new JBPanel();
     private Path basePath;
     private Path updatedPath;
-    public DialogPanel(Project project) {
+    public FilterDiffPanel(Project project) {
         this.project = project;
-        filter = new EditorTextField("", project, RegExpFileType.INSTANCE);
-        filter.setBackground(new Color(69, 73, 74));
+        filter = new LanguageTextField(RegExpLanguage.INSTANCE, project, "");
+        filter.setBackground(baseline.getTextField().getBackground());
         Image iconImage = null;
         try {
             iconImage = ImageIO.read(getClass().getResource("resources/swap1.png"));
@@ -56,7 +54,7 @@ public class DialogPanel extends JPanel {
             System.err.println("Cannot load button icon");
         }
         if (iconImage != null) {
-            iconImage = iconImage.getScaledInstance(33, 43, Image.SCALE_DEFAULT);
+            iconImage = dye((BufferedImage) iconImage, JBColor.foreground()).getScaledInstance(30, 38, Image.SCALE_DEFAULT);
             swapButton.setIcon(new ImageIcon(iconImage));
         }
         swapButton.setPreferredSize(new Dimension(50, 50));
@@ -81,6 +79,16 @@ public class DialogPanel extends JPanel {
                 updatedPath = Paths.get(updated.getText());
                 if (!baseline.getText().isEmpty()) {
                     basePath = Paths.get(baseline.getText());
+                    generateOutPaths();
+                }
+            }
+        });
+        baseline.getTextField().getDocument().addDocumentListener(new DocumentAdapter() {
+            @Override
+            protected void textChanged(DocumentEvent e) {
+                basePath = Paths.get(baseline.getText());
+                if (!updated.getText().isEmpty()) {
+                    updatedPath = Paths.get(updated.getText());
                     generateOutPaths();
                 }
             }
@@ -111,25 +119,20 @@ public class DialogPanel extends JPanel {
         layout.addLayoutComponent(removedWarnings, null);
         setLayout(layout);
     }
-    protected class InspectionChooseDescriptor extends FileChooserDescriptor {
-
-        public InspectionChooseDescriptor() {
-            super(false, true, false, false, false, false);
-        }
-
-        @Override
-        public Icon getIcon(VirtualFile file) {
-            if (file.isDirectory()) {
-                if (file.findChild(InspectionApplication.DESCRIPTIONS + "." + StdFileTypes.XML.getDefaultExtension()) != null) {
-                    return AllIcons.Nodes.InspectionResults;
-                }
-            }
-            return super.getIcon(file);
-        }
-    }
     private void generateOutPaths() {
-        addedWarnings.setText(basePath.getParent().resolve("from_" + basePath.getFileName() + "_to_" + updatedPath.getFileName()).toString());
-        removedWarnings.setText(basePath.getParent().resolve("from_" + updatedPath.getFileName() + "_to_" + basePath.getFileName()).toString());
+        String baseFilename = (basePath == null || basePath.getFileName() == null) ? "" : basePath.getFileName().toString();
+        String updatedFilename = (updatedPath == null || updatedPath.getFileName() == null) ? "" : updatedPath.getFileName().toString();
+        Path parent;
+        if (basePath != null && basePath.getParent() != null) {
+            parent = basePath.getParent();
+        }
+        else {
+            parent = updatedPath.getParent();
+        }
+        if (parent != null) {
+            addedWarnings.setText(parent.resolve("from_" + baseFilename + "_to_" + updatedFilename).toString());
+            removedWarnings.setText(parent.resolve("from_" + updatedFilename + "_to_" + baseFilename).toString());
+        }
     }
     public String getBaseAsStr() {
         return baseline.getText();
@@ -160,6 +163,20 @@ public class DialogPanel extends JPanel {
 
     public TextFieldWithBrowseButton getRemovedWarnings() {
         return removedWarnings;
+    }
+
+    private static BufferedImage dye(BufferedImage image, Color color)
+    {
+        int w = image.getWidth();
+        int h = image.getHeight();
+        BufferedImage dyed = UIUtil.createImage(w,h,BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = dyed.createGraphics();
+        g.drawImage(image, 0,0, null);
+        g.setComposite(AlphaComposite.SrcAtop);
+        g.setColor(color);
+        g.fillRect(0,0,w,h);
+        g.dispose();
+        return dyed;
     }
 
 }
