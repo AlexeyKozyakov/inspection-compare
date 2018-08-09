@@ -51,7 +51,7 @@ import static com.intellij.openapi.ui.Messages.OK;
 import static com.intellij.openapi.ui.Messages.showOkCancelDialog;
 
 public class DiffDialog extends DialogWrapper {
-    private final DialogPanel dialogPanel = new DialogPanel();
+    private final DialogPanel dialogPanel;
     private String addedWarnings;
     private String removedWarnings;
     private Project project;
@@ -60,8 +60,10 @@ public class DiffDialog extends DialogWrapper {
     protected DiffDialog(@Nullable Project project, boolean canBeParent) {
         super(project, canBeParent);
         this.project = project;
+        dialogPanel = new DialogPanel(project);
         init();
         setTitle("Filter/diff inspection Results");
+        setModal(false);
         setValidationDelay(100);
         startTrackingValidation();
     }
@@ -141,7 +143,7 @@ public class DiffDialog extends DialogWrapper {
                         }
                     }
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    Notifications.Bus.notify(new Notification("Plugins notifications", "Error", e.getMessage(), NotificationType.ERROR));
                 }
                 ProgressManager.getInstance().run(new Task.Backgroundable(project, "Comparing") {
                     @Override
@@ -155,7 +157,7 @@ public class DiffDialog extends DialogWrapper {
                         } catch (AccessDeniedException e) {
                             Notifications.Bus.notify(new Notification("Plugins notifications", "Error", "Access to folder denied", NotificationType.ERROR));
                         } catch (Exception e) {
-                            e.printStackTrace();
+                            Notifications.Bus.notify(new Notification("Plugins notifications", "Error", e.getMessage(), NotificationType.ERROR));
                         }
                     }
                 });

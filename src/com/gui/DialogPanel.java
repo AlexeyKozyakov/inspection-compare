@@ -4,14 +4,19 @@ import com.intellij.codeInspection.InspectionApplication;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.fileChooser.FileChooserDescriptor;
 import com.intellij.openapi.fileTypes.StdFileTypes;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Splitter;
 import com.intellij.openapi.ui.TextBrowseFolderListener;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.DocumentAdapter;
+import com.intellij.ui.EditorTextField;
 import com.intellij.ui.components.panels.VerticalLayout;
 import com.intellij.uiDesigner.core.Spacer;
 import com.twelvemonkeys.image.BufferedImageIcon;
+import org.intellij.lang.annotations.RegExp;
+import org.intellij.lang.regexp.RegExpFileType;
+import org.intellij.lang.regexp.RegExpSyntaxHighlighterFactory;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -25,6 +30,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class DialogPanel extends JPanel {
+    private Project project;
     private JLabel baselineLabel = new JLabel("Baseline inspection result");
     private JLabel updatedLabel = new JLabel("Updated inspection result");
     private JLabel filterLabel = new JLabel("Filter");
@@ -32,14 +38,17 @@ public class DialogPanel extends JPanel {
     private JLabel removedWarningsLabel = new JLabel("Removed warnings output");
     private TextFieldWithBrowseButton baseline = new TextFieldWithBrowseButton();
     private TextFieldWithBrowseButton updated = new TextFieldWithBrowseButton();
-    private JTextField filter = new JTextField();
+    private EditorTextField filter;
     private TextFieldWithBrowseButton addedWarnings = new TextFieldWithBrowseButton();
     private TextFieldWithBrowseButton removedWarnings = new TextFieldWithBrowseButton();
     private JButton swapButton = new JButton();
     private JPanel buttonContainer = new JPanel();
     private Path basePath;
     private Path updatedPath;
-    public DialogPanel() {
+    public DialogPanel(Project project) {
+        this.project = project;
+        filter = new EditorTextField("", project, RegExpFileType.INSTANCE);
+        filter.setBackground(new Color(69, 73, 74));
         Image iconImage = null;
         try {
             iconImage = ImageIO.read(getClass().getResource("resources/swap1.png"));
@@ -47,7 +56,7 @@ public class DialogPanel extends JPanel {
             System.err.println("Cannot load button icon");
         }
         if (iconImage != null) {
-            iconImage = iconImage.getScaledInstance(35, 45, Image.SCALE_DEFAULT);
+            iconImage = iconImage.getScaledInstance(33, 43, Image.SCALE_DEFAULT);
             swapButton.setIcon(new ImageIcon(iconImage));
         }
         swapButton.setPreferredSize(new Dimension(50, 50));
