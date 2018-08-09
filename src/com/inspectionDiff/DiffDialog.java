@@ -7,7 +7,6 @@ import com.intellij.codeInspection.actions.ViewOfflineResultsAction;
 import com.intellij.codeInspection.offline.OfflineProblemDescriptor;
 import com.intellij.codeInspection.offlineViewer.OfflineViewParseUtil;
 import com.intellij.codeInspection.ui.InspectionResultsView;
-import com.intellij.ide.DataManager;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationType;
 import com.intellij.notification.Notifications;
@@ -15,6 +14,7 @@ import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.actionSystem.DataKeys;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ReadAction;
+import com.intellij.openapi.fileChooser.FileChooserDescriptor;
 import com.intellij.openapi.fileEditor.impl.LoadTextUtil;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -38,12 +38,17 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
+import java.io.IOException;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+
+import static com.intellij.openapi.ui.Messages.OK;
+import static com.intellij.openapi.ui.Messages.showOkCancelDialog;
 
 public class DiffDialog extends DialogWrapper {
     private final DialogPanel dialogPanel = new DialogPanel();
@@ -56,7 +61,7 @@ public class DiffDialog extends DialogWrapper {
         super(project, canBeParent);
         this.project = project;
         init();
-        setTitle("Filter/diff inspection result");
+        setTitle("Filter/diff inspection Results");
         setValidationDelay(100);
         startTrackingValidation();
     }
@@ -124,6 +129,20 @@ public class DiffDialog extends DialogWrapper {
             //check if input fields is empty
             boolean emptyInput = dialogPanel.getBaseAsStr().isEmpty() || dialogPanel.getUpdatedAsStr().isEmpty() || dialogPanel.getAddedWarningsAsStr().isEmpty() || dialogPanel.getRemovedWarningsAsStr().isEmpty();
             if (validation == null && !emptyInput) {
+                //check if output folders exists and contain files
+                Path addedDir = Paths.get(dialogPanel.getAddedWarningsAsStr());
+                Path removedDir = Paths.get(dialogPanel.getAddedWarningsAsStr());
+                try {
+                    if (Files.exists(addedDir) && Files.list(addedDir).count() > 0 || Files.exists(removedDir) && Files.list(removedDir).count() > 0) {
+
+                        int message = Messages.showOkCancelDialog("Some files may be overwritten. Do you want to continue?", "The output directory already contains files", null);
+                        if (message != OK) {
+                            return;
+                        }
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
                 ProgressManager.getInstance().run(new Task.Backgroundable(project, "Comparing") {
                     @Override
                     public void run(@NotNull ProgressIndicator indicator) {

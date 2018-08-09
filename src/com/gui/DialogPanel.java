@@ -43,7 +43,7 @@ public class DialogPanel extends JPanel {
         Image iconImage = null;
         try {
             iconImage = ImageIO.read(getClass().getResource("resources/swap1.png"));
-        } catch (IOException e) {
+        } catch (Exception e) {
             System.err.println("Cannot load button icon");
         }
         if (iconImage != null) {
@@ -51,17 +51,15 @@ public class DialogPanel extends JPanel {
             swapButton.setIcon(new ImageIcon(iconImage));
         }
         swapButton.setPreferredSize(new Dimension(50, 50));
+        swapButton.setToolTipText("Swap input folders");
         buttonContainer.setLayout(new BorderLayout(5, 5));
         buttonContainer.add(swapButton, BorderLayout.LINE_START);
-        swapButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent actionEvent) {
-                String tmp;
-                tmp = baseline.getText();
-                baseline.setText(updated.getText());
-                updated.setText(tmp);
-                grabFocus();
-            }
+        swapButton.addActionListener(actionEvent -> {
+            String tmp;
+            tmp = baseline.getText();
+            baseline.setText(updated.getText());
+            updated.setText(tmp);
+            grabFocus();
         });
 
         baseline.addBrowseFolderListener(new TextBrowseFolderListener(new InspectionChooseDescriptor()));
