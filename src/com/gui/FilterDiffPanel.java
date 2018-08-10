@@ -15,6 +15,7 @@ import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.ui.TextBrowseFolderListener;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.openapi.ui.ValidationInfo;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.DocumentAdapter;
@@ -27,10 +28,12 @@ import com.intellij.ui.components.panels.VerticalLayout;
 import com.intellij.util.ui.UIUtil;
 import org.intellij.lang.regexp.RegExpLanguage;
 import org.jetbrains.annotations.NotNull;
+import org.xml.sax.SAXException;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
+import javax.xml.parsers.ParserConfigurationException;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -38,6 +41,7 @@ import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.stream.Stream;
 
 import static com.intellij.openapi.ui.Messages.OK;
 
@@ -45,6 +49,8 @@ public class FilterDiffPanel extends JBPanel implements DialogTab {
     private Project project;
     private JBLabel baselineLabel = new JBLabel("Baseline inspection result");
     private JBLabel updatedLabel = new JBLabel("Updated inspection result");
+    private JBLabel baseInfo = new JBLabel();
+    private JBLabel updatedInfo = new JBLabel();
     private JBLabel filterLabel = new JBLabel("Filter");
     private JBLabel addedWarningsLabel = new JBLabel("Added warnings output");
     private JBLabel removedWarningsLabel = new JBLabel("Removed warnings output");
@@ -60,6 +66,10 @@ public class FilterDiffPanel extends JBPanel implements DialogTab {
     private boolean validationFlag = false;
     private XmlDiffResult result = new XmlDiffResult();
     public FilterDiffPanel(Project project) {
+        baseInfo.setVisible(false);
+        baseInfo.setFontColor(UIUtil.FontColor.BRIGHTER);
+        updatedInfo.setVisible(false);
+        updatedInfo.setFontColor(UIUtil.FontColor.BRIGHTER);
         this.project = project;
         filter = new LanguageTextField(RegExpLanguage.INSTANCE, project, "");
         loadState();
@@ -96,6 +106,13 @@ public class FilterDiffPanel extends JBPanel implements DialogTab {
                 if (!baseline.getText().isEmpty()) {
                     basePath = Paths.get(baseline.getText());
                     generateOutPaths();
+                    try {
+                        setInfo(getFolderInfo(updatedPath), updatedInfo);
+                    } catch (ParserConfigurationException e1) {
+                        e1.printStackTrace();
+                    } catch (SAXException e1) {
+                        e1.printStackTrace();
+                    }
                 }
             }
         });
@@ -106,16 +123,25 @@ public class FilterDiffPanel extends JBPanel implements DialogTab {
                 if (!updated.getText().isEmpty()) {
                     updatedPath = Paths.get(updated.getText());
                     generateOutPaths();
+                    try {
+                        setInfo(getFolderInfo(basePath), baseInfo);
+                    } catch (ParserConfigurationException e1) {
+                        e1.printStackTrace();
+                    } catch (SAXException e1) {
+                        e1.printStackTrace();
+                    }
                 }
             }
         });
-        setPreferredSize(new Dimension(800, 500));
+        setPreferredSize(new Dimension(800, 520));
         VerticalLayout layout = new VerticalLayout(1);
         add(baselineLabel);
         add(baseline);
+        add(baseInfo);
         add(buttonContainer);
         add(updatedLabel);
         add(updated);
+        add(updatedInfo);
         add(filterLabel);
         add(filter);
         add(addedWarningsLabel);
@@ -124,9 +150,11 @@ public class FilterDiffPanel extends JBPanel implements DialogTab {
         add(removedWarnings);
         layout.addLayoutComponent(baselineLabel, null);
         layout.addLayoutComponent(baseline, null);
+        layout.addLayoutComponent(baseInfo, null);
         layout.addLayoutComponent(buttonContainer, null);
         layout.addLayoutComponent(updatedLabel, null);
         layout.addLayoutComponent(updated, null);
+        layout.addLayoutComponent(updatedInfo, null);
         layout.addLayoutComponent(filterLabel, null);
         layout.addLayoutComponent(filter, null);
         layout.addLayoutComponent(addedWarningsLabel, null);
@@ -134,6 +162,9 @@ public class FilterDiffPanel extends JBPanel implements DialogTab {
         layout.addLayoutComponent(removedWarningsLabel, null);
         layout.addLayoutComponent(removedWarnings, null);
         setLayout(layout);
+        basePath = Paths.get(getBaseAsStr());
+        updatedPath = Paths.get(getUpdatedAsStr());
+        checkFolders();
     }
     private void generateOutPaths() {
         String baseFilename = (basePath == null || basePath.getFileName() == null) ? "" : basePath.getFileName().toString();
@@ -284,6 +315,47 @@ public class FilterDiffPanel extends JBPanel implements DialogTab {
         updated.setText(PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.updated"));
         addedWarnings.setText(PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.addedWarnings"));
         removedWarnings.setText(PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.removedWarnings"));
+    }
+
+    private void checkFolders(){
+        try {
+            setInfo(getFolderInfo(basePath), baseInfo);
+            setInfo(getFolderInfo(updatedPath), updatedInfo);
+        } catch (ParserConfigurationException e) {
+            e.printStackTrace();
+        } catch (SAXException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    private void setInfo(String info, JBLabel label) {
+        if (info != null) {
+            label.setText(info);
+            if (!label.isVisible()) {
+                label.setVisible(true);
+            }
+        } else if (label.isVisible()) {
+            label.setVisible(false);
+        }
+    }
+
+    private String getFolderInfo(Path folder) throws ParserConfigurationException, SAXException {
+        String info = null;
+        try {
+            if (checkFile(folder)) {
+                long count = Files.list(folder).count() - 1;
+                info = (count > 1) ? count + " .xml files founded" : "one .xml file with " +
+                        XmlDiff.getWarningsCount(Files.list(folder).filter(p -> p.getFileName().toString().toLowerCase().endsWith(".xml") && !p.getFileName().toString().equals(".descriptions.xml")).findAny().get()) + " warnings founded";
+            }
+        } catch (IOException e1) {
+            e1.printStackTrace();
+        }
+        return info;
+    }
+
+    private boolean checkFile(Path file) throws IOException {
+        return file != null && Files.exists(file) && Files.isDirectory(file) && Files.list(basePath).anyMatch(p -> p.getFileName().toString().equals(".descriptions.xml"));
     }
 
     private static BufferedImage dye(BufferedImage image, Color color)

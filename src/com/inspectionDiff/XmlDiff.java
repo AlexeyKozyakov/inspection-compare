@@ -58,6 +58,9 @@ public class XmlDiff {
         return compareResult;
     }
 
+    public static int getWarningsCount(Path file) throws ParserConfigurationException, SAXException, IOException {
+        return filter(read(file), "")[0];
+    }
 
     public static XmlDiffResult compareFiles(@NotNull Path base,@NotNull Path updated,
                                @NotNull Path outAdded, @NotNull Path outRemoved, @Nullable String filter) throws IOException, TransformerException, ParserConfigurationException, SAXException {
