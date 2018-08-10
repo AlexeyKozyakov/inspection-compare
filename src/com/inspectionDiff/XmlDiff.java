@@ -1,6 +1,5 @@
 package com.inspectionDiff;
 import com.intellij.openapi.progress.ProgressIndicator;
-import com.sun.management.UnixOperatingSystemMXBean;
 import org.jetbrains.annotations.NotNull;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -19,8 +18,6 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.management.ManagementFactory;
-import java.lang.management.OperatingSystemMXBean;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -32,7 +29,7 @@ import java.util.stream.Collectors;
 public class XmlDiff {
 
     public static XmlDiffResult compareFolders(@NotNull String base, @NotNull String updated,
-                                               @NotNull String outAdded, @NotNull String outRemoved, @Nullable String filter, @Nullable ProgressIndicator indicator) throws IOException, TransformerException, ParserConfigurationException, SAXException {
+                                               @NotNull String outAdded, @NotNull String outRemoved, @NotNull String filter, @Nullable ProgressIndicator indicator) throws IOException, TransformerException, ParserConfigurationException, SAXException {
         XmlDiffResult compareResult = new XmlDiffResult();
         Path leftFolder = Paths.get(base);
         Path rightFolder = Paths.get(updated);
@@ -56,7 +53,8 @@ public class XmlDiff {
         diffContent(leftFiles, rightFiles, outputAdded, outputRemoved, filter, compareResult, indicator);
         Files.copy(leftFolder.resolve(".descriptions.xml"), outputAdded.resolve(".descriptions.xml"), StandardCopyOption.REPLACE_EXISTING);
         Files.copy(leftFolder.resolve(".descriptions.xml"), outputRemoved.resolve(".descriptions.xml"), StandardCopyOption.REPLACE_EXISTING);
-        indicator.setFraction(1.0);
+        if (indicator != null)
+            indicator.setFraction(1.0);
         return compareResult;
     }
 
@@ -67,7 +65,7 @@ public class XmlDiff {
         Document left = read(base);
         Document right = read(updated);
         if(filter != null) {
-             filterBoth(left, right, filter, compareResult);
+             filterBoth(left, right, filter);
         }
         Document added = diff(left, right, compareResult);
         Document removed = diff(right, left, null);
@@ -76,17 +74,46 @@ public class XmlDiff {
         return compareResult;
     }
 
+    public static XmlDiffResult filterFolder(String inspFolder, String outputFolder, String substring, ProgressIndicator indicator) throws IOException, ParserConfigurationException, SAXException, TransformerException {
+        XmlDiffResult res = new XmlDiffResult();
+        Path in = Paths.get(inspFolder);
+        Path out = Paths.get(outputFolder);
+        if (Files.notExists(out)) {
+            Files.createDirectories(out);
+        }
+        List<Path> files = Files.list(in)
+                .filter(p -> p.toString().toLowerCase().endsWith(".xml"))
+                .collect(Collectors.toList());
+        int progress = 0;
+        for (Path file : files) {
+            if (indicator.isCanceled()) {
+                return res;
+            }
+            Document doc = read(file);
+            int [] beforeAfter = filter(doc, substring);
+            res.count += beforeAfter[0];
+            res.filteredCount += beforeAfter[1];
+            write(out.resolve(file.getFileName().toString()), doc);
+            indicator.setFraction((double)progress / files.size());
+            ++progress;
+        }
+        Files.copy(in.resolve(".descriptions.xml"), out.resolve(".descriptions.xml"), StandardCopyOption.REPLACE_EXISTING);
+        indicator.setFraction(1.0);
+        return res;
+    }
+
     //compare files with the same names
     private static void diffContent(Map<String, Path> leftFiles, Map<String, Path> rightFiles, Path outputAdded, Path outputRemoved, String filter, XmlDiffResult compareResult, ProgressIndicator indicator ) throws ParserConfigurationException, TransformerException, SAXException, IOException {
         int progress = 0;
         for (Map.Entry<String, Path> file : leftFiles.entrySet()) {
-            if (indicator.isCanceled()) {
+            if (indicator != null && indicator.isCanceled()) {
                 return;
             }
             if (rightFiles.containsKey(file.getKey())) {
                 compareResult.add(compareFiles(file.getValue(), rightFiles.get(file.getKey()), outputAdded.resolve(file.getKey()),
                         outputRemoved.resolve(file.getKey()), filter));
-                indicator.setFraction((double)progress / leftFiles.size());
+                if (indicator != null)
+                    indicator.setFraction((double)progress / leftFiles.size());
             }
             ++progress;
         }
@@ -115,13 +142,9 @@ public class XmlDiff {
         }
     }
 
-    private static void filterBoth(Document left, Document right, String substring, XmlDiffResult compareRes) {
-        int [] leftBeforeAfter = filter(left, substring);
-        compareRes.baseCount = leftBeforeAfter[0];
-        compareRes.baseFiltered = leftBeforeAfter[1];
-        int [] rightBeforeAfter = filter(right, substring);
-        compareRes.updatedCount = rightBeforeAfter[0];
-        compareRes.updatedFiltered = rightBeforeAfter[1];
+    private static void filterBoth(Document left, Document right, String substring) {
+        filter(left, substring);
+        filter(right, substring);
     }
 
     private static int [] filter(Document document, String substring) {

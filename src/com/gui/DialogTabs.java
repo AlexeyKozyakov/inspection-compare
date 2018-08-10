@@ -6,12 +6,10 @@ import com.intellij.ui.components.JBTabbedPane;
 import java.awt.*;
 
 public class DialogTabs extends JBTabbedPane {
-    private Project project;
     private FilterDiffPanel filterDiffPanel;
     private FilterPanel filterPanel;
     public DialogTabs(Project project) {
         super(2);
-        this.project = project;
         filterDiffPanel = new FilterDiffPanel(project);
         filterPanel = new FilterPanel(project);
         insertTab("Filter and diff", null, filterDiffPanel, "Filter/diff inspection results", 0);

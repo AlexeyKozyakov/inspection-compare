@@ -3,13 +3,10 @@ package com.gui;
 import com.inspectionDiff.OfflineViewer;
 import com.inspectionDiff.XmlDiff;
 import com.inspectionDiff.XmlDiffResult;
-import com.intellij.codeInspection.InspectionApplication;
-import com.intellij.icons.AllIcons;
+import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationType;
 import com.intellij.notification.Notifications;
-import com.intellij.openapi.fileChooser.FileChooserDescriptor;
-import com.intellij.openapi.fileTypes.StdFileTypes;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
@@ -28,7 +25,6 @@ import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBPanel;
 import com.intellij.ui.components.panels.VerticalLayout;
 import com.intellij.util.ui.UIUtil;
-import org.intellij.lang.regexp.RegExpFileType;
 import org.intellij.lang.regexp.RegExpLanguage;
 import org.jetbrains.annotations.NotNull;
 
@@ -66,6 +62,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab {
     public FilterDiffPanel(Project project) {
         this.project = project;
         filter = new LanguageTextField(RegExpLanguage.INSTANCE, project, "");
+        loadState();
         Image iconImage = null;
         try {
             iconImage = ImageIO.read(getClass().getResource("resources/swap1.png"));
@@ -192,7 +189,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab {
         //check if input fields is empty
         boolean emptyInput = getBaseAsStr().isEmpty() || getUpdatedAsStr().isEmpty() || getAddedWarningsAsStr().isEmpty() || getRemovedWarningsAsStr().isEmpty();
         if (validation == null && !emptyInput) {
-            //check if output folders exists and contain files
+            //check if output folders exist and contain files
             Path addedDir = Paths.get(getAddedWarningsAsStr());
             Path removedDir = Paths.get(getAddedWarningsAsStr());
             try {
@@ -203,6 +200,8 @@ public class FilterDiffPanel extends JBPanel implements DialogTab {
                         return CONTINUE;
                     }
                 }
+            } catch (AccessDeniedException e) {
+                Notifications.Bus.notify(new Notification("Plugins notifications", "Error", "Access to folder denied", NotificationType.ERROR));
             } catch (IOException e) {
                 Notifications.Bus.notify(new Notification("Plugins notifications", "Error", e.toString(), NotificationType.ERROR));
             }
@@ -212,7 +211,9 @@ public class FilterDiffPanel extends JBPanel implements DialogTab {
                     try {
                         result = XmlDiff.compareFolders(getBaseAsStr(), getUpdatedAsStr(), getAddedWarningsAsStr(),
                                 getRemovedWarningsAsStr(), getFilterAsStr(), indicator);
-                        sendNotification(result, project);
+                        if (!indicator.isCanceled()) {
+                            sendNotification(result);
+                        }
                     } catch (AccessDeniedException e) {
                         Notifications.Bus.notify(new Notification("Plugins notifications", "Error", "Access to folder denied", NotificationType.ERROR));
                     } catch (Exception e) {
@@ -220,6 +221,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab {
                     }
                 }
             });
+            saveState();
             return EXIT;
         } else {
             validationFlag = true;
@@ -245,7 +247,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab {
     }
 
     //send notification with compare results
-    private void sendNotification(XmlDiffResult result, Project project) {
+    private void sendNotification(XmlDiffResult result) {
         Notifications.Bus.notify(new Notification("Plugins notifications", null, "Completed!", null,
                 "Baseline warnings count: " + result.baseProblems + "<br>" +
                         "Updated warnings count: " + result.updatedProblems + "<br>" +
@@ -268,6 +270,20 @@ public class FilterDiffPanel extends JBPanel implements DialogTab {
     @Override
     public JComponent getFocusComponent() {
         return baseline;
+    }
+
+    private void saveState() {
+        PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.baseline", baseline.getText());
+        PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.updated", updated.getText());
+        PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.addedWarnings", addedWarnings.getText());
+        PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.removedWarnings", removedWarnings.getText());
+    }
+
+    private void loadState() {
+        baseline.setText(PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.baseline"));
+        updated.setText(PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.updated"));
+        addedWarnings.setText(PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.addedWarnings"));
+        removedWarnings.setText(PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.removedWarnings"));
     }
 
     private static BufferedImage dye(BufferedImage image, Color color)
