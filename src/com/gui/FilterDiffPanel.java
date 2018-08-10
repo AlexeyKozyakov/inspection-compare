@@ -1,12 +1,24 @@
 package com.gui;
 
+import com.inspectionDiff.OfflineViewer;
+import com.inspectionDiff.XmlDiff;
+import com.inspectionDiff.XmlDiffResult;
 import com.intellij.codeInspection.InspectionApplication;
 import com.intellij.icons.AllIcons;
+import com.intellij.notification.Notification;
+import com.intellij.notification.NotificationType;
+import com.intellij.notification.Notifications;
 import com.intellij.openapi.fileChooser.FileChooserDescriptor;
 import com.intellij.openapi.fileTypes.StdFileTypes;
+import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.progress.ProgressManager;
+import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.ui.TextBrowseFolderListener;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
+import com.intellij.openapi.ui.ValidationInfo;
+import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.DocumentAdapter;
 import com.intellij.ui.EditorTextField;
@@ -18,16 +30,22 @@ import com.intellij.ui.components.panels.VerticalLayout;
 import com.intellij.util.ui.UIUtil;
 import org.intellij.lang.regexp.RegExpFileType;
 import org.intellij.lang.regexp.RegExpLanguage;
+import org.jetbrains.annotations.NotNull;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.nio.file.AccessDeniedException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-public class FilterDiffPanel extends JBPanel {
+import static com.intellij.openapi.ui.Messages.OK;
+
+public class FilterDiffPanel extends JBPanel implements DialogTab {
     private Project project;
     private JBLabel baselineLabel = new JBLabel("Baseline inspection result");
     private JBLabel updatedLabel = new JBLabel("Updated inspection result");
@@ -43,10 +61,11 @@ public class FilterDiffPanel extends JBPanel {
     private JBPanel buttonContainer = new JBPanel();
     private Path basePath;
     private Path updatedPath;
+    private boolean validationFlag = false;
+    private XmlDiffResult result = new XmlDiffResult();
     public FilterDiffPanel(Project project) {
         this.project = project;
         filter = new LanguageTextField(RegExpLanguage.INSTANCE, project, "");
-        filter.setBackground(baseline.getTextField().getBackground());
         Image iconImage = null;
         try {
             iconImage = ImageIO.read(getClass().getResource("resources/swap1.png"));
@@ -134,6 +153,81 @@ public class FilterDiffPanel extends JBPanel {
             removedWarnings.setText(parent.resolve("from_" + updatedFilename + "_to_" + baseFilename).toString());
         }
     }
+
+    @Override
+    public ValidationInfo doValidate() {
+        //don't show message about empty fields before button is pressed
+        if (validationFlag) {
+            if (getBaseAsStr().isEmpty()) {
+                return new ValidationInfo("Choose baseline folder", baseline.getTextField());
+            }
+            if (getUpdatedAsStr().isEmpty()) {
+                return new ValidationInfo("Choose updated folder", updated.getTextField());
+            }
+            if (getAddedWarningsAsStr().isEmpty()) {
+                return new ValidationInfo("Choose added warnings out folder", addedWarnings.getTextField());
+            }
+            if (getRemovedWarningsAsStr().isEmpty()) {
+                return new ValidationInfo("Choose removed warnings out folder", removedWarnings.getTextField());
+            }
+        }
+        if (!Files.exists(Paths.get(getBaseAsStr())) ) {
+            return new ValidationInfo("Baseline folder does not exist", baseline.getTextField());
+        }
+        if (!Files.exists(Paths.get(getUpdatedAsStr())) ) {
+            return new ValidationInfo("Updated folder does not exist", updated.getTextField());
+        }
+        if (!getBaseAsStr().isEmpty() && getBaseAsStr().equals(getUpdatedAsStr())) {
+            return new ValidationInfo("Choose different baseline and updated folders", baseline.getTextField());
+        }
+        if (!getAddedWarningsAsStr().isEmpty() && getAddedWarningsAsStr().equals(getRemovedWarningsAsStr())) {
+            return new ValidationInfo("Choose different output folders", addedWarnings.getTextField());
+        }
+        return null;
+    }
+
+    @Override
+    public int run() {
+        ValidationInfo validation = doValidate();
+        //check if input fields is empty
+        boolean emptyInput = getBaseAsStr().isEmpty() || getUpdatedAsStr().isEmpty() || getAddedWarningsAsStr().isEmpty() || getRemovedWarningsAsStr().isEmpty();
+        if (validation == null && !emptyInput) {
+            //check if output folders exists and contain files
+            Path addedDir = Paths.get(getAddedWarningsAsStr());
+            Path removedDir = Paths.get(getAddedWarningsAsStr());
+            try {
+                if (Files.exists(addedDir) && Files.list(addedDir).count() > 0 || Files.exists(removedDir) && Files.list(removedDir).count() > 0) {
+
+                    int message = Messages.showOkCancelDialog("Some files may be overwritten. Do you want to continue?", "The output directory already contains files", null);
+                    if (message != OK) {
+                        return CONTINUE;
+                    }
+                }
+            } catch (IOException e) {
+                Notifications.Bus.notify(new Notification("Plugins notifications", "Error", e.toString(), NotificationType.ERROR));
+            }
+            ProgressManager.getInstance().run(new Task.Backgroundable(project, "Comparing") {
+                @Override
+                public void run(@NotNull ProgressIndicator indicator) {
+                    try {
+                        result = XmlDiff.compareFolders(getBaseAsStr(), getUpdatedAsStr(), getAddedWarningsAsStr(),
+                                getRemovedWarningsAsStr(), getFilterAsStr(), indicator);
+                        sendNotification(result, project);
+                    } catch (AccessDeniedException e) {
+                        Notifications.Bus.notify(new Notification("Plugins notifications", "Error", "Access to folder denied", NotificationType.ERROR));
+                    } catch (Exception e) {
+                        Notifications.Bus.notify(new Notification("Plugins notifications", "Error", e.toString(), NotificationType.ERROR));
+                    }
+                }
+            });
+            return EXIT;
+        } else {
+            validationFlag = true;
+            validation.component.grabFocus();
+            return CONTINUE;
+        }
+    }
+
     public String getBaseAsStr() {
         return baseline.getText();
     }
@@ -150,19 +244,30 @@ public class FilterDiffPanel extends JBPanel {
         return removedWarnings.getText();
     }
 
-    public TextFieldWithBrowseButton getBaseline() {
+    //send notification with compare results
+    private void sendNotification(XmlDiffResult result, Project project) {
+        Notifications.Bus.notify(new Notification("Plugins notifications", null, "Completed!", null,
+                "Baseline warnings count: " + result.baseProblems + "<br>" +
+                        "Updated warnings count: " + result.updatedProblems + "<br>" +
+                        "Added warnings: " + result.added + "<br>" +
+                        "Removed warnings: " + result.removed + "<br>" +
+                        "<a href=\"added\">Open added</a>  " +
+                        "<a href=\"removed\">Open removed</a>",
+                NotificationType.INFORMATION, (notification, event) -> {
+            if (event.getDescription().equals("added")) {
+                VirtualFile added = LocalFileSystem.getInstance().refreshAndFindFileByPath(getAddedWarningsAsStr());
+                OfflineViewer.openOfflineView(added, project);
+            }
+            if (event.getDescription().equals("removed")) {
+                VirtualFile removed = LocalFileSystem.getInstance().refreshAndFindFileByPath(getRemovedWarningsAsStr());
+                OfflineViewer.openOfflineView(removed, project);
+            }
+        }));
+    }
+
+    @Override
+    public JComponent getFocusComponent() {
         return baseline;
-    }
-    public TextFieldWithBrowseButton getUpdated() {
-        return updated;
-    }
-
-    public TextFieldWithBrowseButton getAddedWarnings() {
-        return addedWarnings;
-    }
-
-    public TextFieldWithBrowseButton getRemovedWarnings() {
-        return removedWarnings;
     }
 
     private static BufferedImage dye(BufferedImage image, Color color)

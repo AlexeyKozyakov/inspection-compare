@@ -3,6 +3,8 @@ package com.gui;
 import com.intellij.openapi.project.Project;
 import com.intellij.ui.components.JBTabbedPane;
 
+import java.awt.*;
+
 public class DialogTabs extends JBTabbedPane {
     private Project project;
     private FilterDiffPanel filterDiffPanel;
@@ -16,11 +18,12 @@ public class DialogTabs extends JBTabbedPane {
         insertTab("Filter only", null, filterPanel, "Filter inspection results", 1);
     }
 
-    public FilterDiffPanel getFilterDiffPanel() {
-        return filterDiffPanel;
-    }
-
-    public FilterPanel getFilterPanel() {
-        return filterPanel;
+    public DialogTab getCurrentTab() {
+        Component currentTab = getSelectedComponent();
+        if (currentTab instanceof DialogTab) {
+            return (DialogTab) currentTab;
+        } else {
+            return null;
+        }
     }
 }

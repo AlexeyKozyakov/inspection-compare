@@ -3,14 +3,17 @@ package com.gui;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.TextBrowseFolderListener;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
+import com.intellij.openapi.ui.ValidationInfo;
 import com.intellij.ui.LanguageTextField;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBPanel;
 import org.intellij.lang.regexp.RegExpLanguage;
 import org.jdesktop.swingx.VerticalLayout;
 
+import javax.swing.*;
 
-public class FilterPanel extends JBPanel {
+
+public class FilterPanel extends JBPanel implements DialogTab {
     private Project project;
     private JBLabel inspectionResultLabel = new JBLabel("Inspection result");
     private JBLabel filterLabel = new JBLabel("Filter");
@@ -22,7 +25,6 @@ public class FilterPanel extends JBPanel {
     public FilterPanel(Project project) {
         this.project = project;
         filter = new LanguageTextField(RegExpLanguage.INSTANCE, project, "");
-        filter.setBackground(inspectionResult.getTextField().getBackground());
         inspectionResult.addBrowseFolderListener(new TextBrowseFolderListener(new InspectionChooseDescriptor()));
         output.addBrowseFolderListener(new TextBrowseFolderListener(new InspectionChooseDescriptor()));
         add(inspectionResultLabel);
@@ -41,6 +43,21 @@ public class FilterPanel extends JBPanel {
         verticalLayout.addLayoutComponent(null, output);
     }
 
+    @Override
+    public JComponent getFocusComponent() {
+        return inspectionResult;
+    }
+
+    @Override
+    public ValidationInfo doValidate() {
+        return null;
+    }
+
+    @Override
+    public int run() {
+        return 0;
+    }
+
     public String getFilterAsStr() {
         return filter.getText();
     }
@@ -48,4 +65,6 @@ public class FilterPanel extends JBPanel {
     public String getInspectionResultAsStr() {
         return inspectionResult.getText();
     }
+
+
 }
