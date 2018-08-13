@@ -1,14 +1,13 @@
-package com.inspectionDiff;
+package com.inspection_diff;
 
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.util.Disposer;
 
 public class DiffMenuItem extends AnAction {
 
     public DiffMenuItem() {
-        super(" Filter/diff inspection result");
+        super(" Filter/diff inspection results...");
     }
 
     @Override

@@ -1,4 +1,4 @@
-package com.inspectionDiff;
+package com.inspection_diff;
 import com.intellij.openapi.progress.ProgressIndicator;
 import org.jetbrains.annotations.NotNull;
 import org.w3c.dom.Document;
@@ -29,7 +29,8 @@ import java.util.stream.Collectors;
 public class XmlDiff {
 
     public static XmlDiffResult compareFolders(@NotNull String base, @NotNull String updated,
-                                               @NotNull String outAdded, @NotNull String outRemoved, @NotNull String filter, @Nullable ProgressIndicator indicator) throws IOException, TransformerException, ParserConfigurationException, SAXException {
+                                               @NotNull String outAdded, @NotNull String outRemoved, @NotNull String filter,
+                                               @NotNull String replaceFrom, @NotNull String replaceTo, @Nullable ProgressIndicator indicator) throws IOException, TransformerException, ParserConfigurationException, SAXException {
         XmlDiffResult compareResult = new XmlDiffResult();
         Path leftFolder = Paths.get(base);
         Path rightFolder = Paths.get(updated);
@@ -50,7 +51,7 @@ public class XmlDiff {
                 .collect(Collectors.toMap(f -> f.getFileName().toString(), f -> f));
 
         diffFiles(leftFiles, rightFiles, outputAdded, outputRemoved, compareResult, filter);
-        diffContent(leftFiles, rightFiles, outputAdded, outputRemoved, filter, compareResult, indicator);
+        diffContent(leftFiles, rightFiles, outputAdded, outputRemoved, filter, replaceFrom, replaceTo, compareResult, indicator);
         Files.copy(leftFolder.resolve(".descriptions.xml"), outputAdded.resolve(".descriptions.xml"), StandardCopyOption.REPLACE_EXISTING);
         Files.copy(leftFolder.resolve(".descriptions.xml"), outputRemoved.resolve(".descriptions.xml"), StandardCopyOption.REPLACE_EXISTING);
         if (indicator != null)
@@ -63,15 +64,16 @@ public class XmlDiff {
     }
 
     public static XmlDiffResult compareFiles(@NotNull Path base,@NotNull Path updated,
-                               @NotNull Path outAdded, @NotNull Path outRemoved, @Nullable String filter) throws IOException, TransformerException, ParserConfigurationException, SAXException {
+                               @NotNull Path outAdded, @NotNull Path outRemoved, @Nullable String filter,
+                                             @NotNull String replaceFrom, @NotNull String replaceTo) throws IOException, TransformerException, ParserConfigurationException, SAXException {
         XmlDiffResult compareResult = new XmlDiffResult();
         Document left = read(base);
         Document right = read(updated);
         if(filter != null) {
              filterBoth(left, right, filter);
         }
-        Document added = diff(left, right, compareResult);
-        Document removed = diff(right, left, null);
+        Document added = diff(left, right, replaceFrom, replaceTo, compareResult);
+        Document removed = diff(right, left, replaceFrom, replaceTo, null);
         write(outAdded, added);
         write(outRemoved, removed);
         return compareResult;
@@ -106,7 +108,8 @@ public class XmlDiff {
     }
 
     //compare files with the same names
-    private static void diffContent(Map<String, Path> leftFiles, Map<String, Path> rightFiles, Path outputAdded, Path outputRemoved, String filter, XmlDiffResult compareResult, ProgressIndicator indicator ) throws ParserConfigurationException, TransformerException, SAXException, IOException {
+    private static void diffContent(Map<String, Path> leftFiles, Map<String, Path> rightFiles, Path outputAdded, Path outputRemoved, String filter,
+                                    String replaceFrom, String replaceTo, XmlDiffResult compareResult, ProgressIndicator indicator ) throws ParserConfigurationException, TransformerException, SAXException, IOException {
         int progress = 0;
         for (Map.Entry<String, Path> file : leftFiles.entrySet()) {
             if (indicator != null && indicator.isCanceled()) {
@@ -114,7 +117,7 @@ public class XmlDiff {
             }
             if (rightFiles.containsKey(file.getKey())) {
                 compareResult.add(compareFiles(file.getValue(), rightFiles.get(file.getKey()), outputAdded.resolve(file.getKey()),
-                        outputRemoved.resolve(file.getKey()), filter));
+                        outputRemoved.resolve(file.getKey()), filter, replaceFrom, replaceTo));
                 if (indicator != null)
                     indicator.setFraction((double)progress / leftFiles.size());
             }
@@ -172,7 +175,7 @@ public class XmlDiff {
         return new int [] {totalCount, filteredCount};
     }
 
-    private static Map<List<String>, Element> getModel(Document document) {
+    private static Map<List<String>, Element> getModel(Document document, String replaceFrom, String replaceTo) {
         NodeList nodes = document.getDocumentElement().getChildNodes();
         Map<List<String>, Element> result = new LinkedHashMap<>();
         for(int i=0; i<nodes.getLength(); i++) {
@@ -180,20 +183,21 @@ public class XmlDiff {
             if(node instanceof Element) {
                 Element problem = (Element) node;
                 Element file = (Element) problem.getElementsByTagName("file").item(0);
-                if(!file.getTextContent().endsWith(".java")) continue;
+                if(file != null && !file.getTextContent().endsWith(".java")) continue;
                 Element line = (Element) problem.getElementsByTagName("line").item(0);
                 Element description = (Element) problem.getElementsByTagName("description").item(0);
                 if(file != null && line != null && description != null) {
-                    result.put(Arrays.asList(file.getTextContent(), line.getTextContent(), description.getTextContent().replaceFirst("replaced with.+", "")), problem);
+                    result.put(Arrays.asList(file.getTextContent(), line.getTextContent(),
+                            description.getTextContent().replaceFirst("replaced with.+", "").replaceAll(replaceFrom, replaceTo)), problem);
                 }
             }
         }
         return result;
     }
 
-    private static Document diff(Document left, Document right, XmlDiffResult compareRes) throws ParserConfigurationException {
-        Map<List<String>, Element> leftModel = getModel(left);
-        Map<List<String>, Element> rightModel = getModel(right);
+    private static Document diff(Document left, Document right, String replaceFrom, String replaceTo, XmlDiffResult compareRes) throws ParserConfigurationException {
+        Map<List<String>, Element> leftModel = getModel(left, replaceFrom, replaceTo);
+        Map<List<String>, Element> rightModel = getModel(right, replaceFrom, replaceTo);
         Map<List<String>, Element> leftSansRight = new HashMap<>(leftModel);
         leftSansRight.keySet().removeAll(rightModel.keySet());
         Map<List<String>, Element> rightSansLeft = new HashMap<>(rightModel);

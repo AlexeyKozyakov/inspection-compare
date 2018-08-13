@@ -1,9 +1,13 @@
 package com.gui;
 
+import com.intellij.ui.*;
+import com.intellij.ui.components.*;
+import com.intellij.uiDesigner.core.Spacer;
+import com.intellij.util.ui.JBFont;
 import com.util.FileChecker;
 import com.util.OfflineViewer;
-import com.inspectionDiff.XmlDiff;
-import com.inspectionDiff.XmlDiffResult;
+import com.inspection_diff.XmlDiff;
+import com.inspection_diff.XmlDiffResult;
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationType;
@@ -20,12 +24,6 @@ import com.intellij.openapi.ui.ValidationInfo;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.ui.DocumentAdapter;
-import com.intellij.ui.EditorTextField;
-import com.intellij.ui.JBColor;
-import com.intellij.ui.LanguageTextField;
-import com.intellij.ui.components.JBLabel;
-import com.intellij.ui.components.JBPanel;
 import com.intellij.ui.components.panels.VerticalLayout;
 import com.intellij.util.ui.UIUtil;
 import org.intellij.lang.regexp.RegExpLanguage;
@@ -35,6 +33,7 @@ import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import java.awt.*;
+import java.awt.event.ItemEvent;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.AccessDeniedException;
@@ -53,13 +52,19 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
     private JBLabel filterLabel = new JBLabel("Filter");
     private JBLabel addedWarningsLabel = new JBLabel("Added warnings output");
     private JBLabel removedWarningsLabel = new JBLabel("Removed warnings output");
+    private JBLabel replaceFromLabel = new JBLabel("Replace from:");
+    private JBLabel replaceToLabel = new JBLabel("to:");
     private TextFieldWithBrowseButton baseline = new TextFieldWithBrowseButton();
     private TextFieldWithBrowseButton updated = new TextFieldWithBrowseButton();
-    private EditorTextField filter;
+    private LanguageTextField filter;
     private TextFieldWithBrowseButton addedWarnings = new TextFieldWithBrowseButton();
     private TextFieldWithBrowseButton removedWarnings = new TextFieldWithBrowseButton();
+    private JBCheckBox checkBox = new JBCheckBox();
     private JButton swapButton = new JButton();
     private JBPanel buttonContainer = new JBPanel();
+    private JBPanel replaceContainer = new JBPanel();
+    private LanguageTextField replaceFrom;
+    private JBTextField replaceTo;
     private Path basePath;
     private Path updatedPath;
     private boolean validationFlag = false;
@@ -71,6 +76,9 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         updatedInfo.setFontColor(UIUtil.FontColor.BRIGHTER);
         this.project = project;
         filter = new LanguageTextField(RegExpLanguage.INSTANCE, project, "");
+        replaceFrom = new LanguageTextField(RegExpLanguage.INSTANCE, project, "");
+        replaceTo = new JBTextField();
+        replaceTo.setBackground(replaceFrom.getBackground());
         loadState();
         Image iconImage = null;
         try {
@@ -120,7 +128,29 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
                 }
             }
         });
-        setPreferredSize(new Dimension(800, 520));
+        checkBox.setText("Normalize");
+        checkBox.addItemListener(e -> {
+            if (e.getStateChange() == ItemEvent.SELECTED) {
+                replaceContainer.setVisible(true);
+                replaceFrom.grabFocus();
+            } else {
+                replaceContainer.setVisible(false);
+                grabFocus();
+            }
+        });
+        replaceContainer.add(replaceFromLabel);
+        replaceContainer.add(replaceFrom);
+        replaceContainer.add(replaceToLabel);
+        replaceContainer.add(replaceTo);
+
+        VerticalLayout containerLayout = new VerticalLayout(1);
+        replaceContainer.setLayout(containerLayout);
+        containerLayout.addLayoutComponent(replaceFromLabel, null);
+        containerLayout.addLayoutComponent(replaceFrom, null);
+        containerLayout.addLayoutComponent(replaceToLabel, null);
+        containerLayout.addLayoutComponent(replaceTo, null);
+        replaceContainer.setVisible(false);
+        setPreferredSize(new Dimension(800, 540));
         VerticalLayout layout = new VerticalLayout(1);
         add(baselineLabel);
         add(baseline);
@@ -129,6 +159,8 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         add(updatedLabel);
         add(updated);
         add(updatedInfo);
+        add(checkBox);
+        add(replaceContainer);
         add(filterLabel);
         add(filter);
         add(addedWarningsLabel);
@@ -142,6 +174,8 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         layout.addLayoutComponent(updatedLabel, null);
         layout.addLayoutComponent(updated, null);
         layout.addLayoutComponent(updatedInfo, null);
+        layout.addLayoutComponent(checkBox, null);
+        layout.addLayoutComponent(replaceContainer, null);
         layout.addLayoutComponent(filterLabel, null);
         layout.addLayoutComponent(filter, null);
         layout.addLayoutComponent(addedWarningsLabel, null);
@@ -217,7 +251,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
             try {
                 if (Files.exists(addedDir) && Files.list(addedDir).count() > 0 || Files.exists(removedDir) && Files.list(removedDir).count() > 0) {
 
-                    int message = Messages.showOkCancelDialog("Some files may be overwritten. Do you want to continue?", "The output directory already contains files", null);
+                    int message = Messages.showOkCancelDialog("Some files may be overwritten. Do you want to continue?", "The Output Directory Already Contains Files", null);
                     if (message != OK) {
                         return CONTINUE;
                     }
@@ -232,7 +266,8 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
                 public void run(@NotNull ProgressIndicator indicator) {
                     try {
                         result = XmlDiff.compareFolders(getBaseAsStr(), getUpdatedAsStr(), getAddedWarningsAsStr(),
-                                getRemovedWarningsAsStr(), getFilterAsStr(), indicator);
+                                getRemovedWarningsAsStr(), getFilterAsStr(), checkBox.isSelected() ? replaceFrom.getText() : "",
+                                checkBox.isSelected() ? replaceTo.getText() : "", indicator);
                         if (!indicator.isCanceled()) {
                             sendNotification(result);
                         }
@@ -312,7 +347,6 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         FileChecker.setInfo(updated.getTextField(), updatedInfo);
 
     }
-
 
     private static BufferedImage dye(BufferedImage image, Color color)
     {

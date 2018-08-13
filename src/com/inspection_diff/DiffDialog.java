@@ -1,11 +1,10 @@
-package com.inspectionDiff;
+package com.inspection_diff;
 
 import com.gui.DialogTabs;
 
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.DialogWrapper;
 import com.intellij.openapi.ui.ValidationInfo;
-import com.intellij.openapi.util.Disposer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -20,7 +19,7 @@ public class DiffDialog extends DialogWrapper {
         super(project, canBeParent);
         dialogTabs = new DialogTabs(project);
         init();
-        setTitle("Filter/diff inspection Results");
+        setTitle("Filter/Diff Inspection Results");
         setModal(false);
         setValidationDelay(100);
         startTrackingValidation();

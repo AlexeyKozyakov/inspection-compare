@@ -1,4 +1,4 @@
-package com.inspectionDiff;
+package com.inspection_diff;
 
 public class XmlDiffResult {
     public int count;

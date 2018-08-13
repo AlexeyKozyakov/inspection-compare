@@ -1,6 +1,6 @@
 package com.util;
 
-import com.inspectionDiff.XmlDiff;
+import com.inspection_diff.XmlDiff;
 import com.intellij.ui.components.JBLabel;
 
 import javax.swing.*;
@@ -33,7 +33,7 @@ public class FileChecker {
         String info = null;
         if (checkFile(folder)) {
             try {
-                long count = Files.list(folder).count() - 1;
+                long count = Files.list(folder).filter(p -> p.toString().toLowerCase().endsWith(".xml")).count() - 1;
                 info = (count > 1) ? count + " .xml files found" : "one .xml file with " +
                         XmlDiff.getWarningsCount(Files.list(folder).filter(p -> p.getFileName().toString().toLowerCase().endsWith(".xml") && !p.getFileName().toString().equals(".descriptions.xml")).findAny().get()) + " warnings found";
             } catch (Exception e) {

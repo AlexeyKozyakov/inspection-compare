@@ -1,11 +1,10 @@
 package com.gui;
 
-import com.intellij.ui.JBColor;
 import com.intellij.util.ui.UIUtil;
 import com.util.FileChecker;
 import com.util.OfflineViewer;
-import com.inspectionDiff.XmlDiff;
-import com.inspectionDiff.XmlDiffResult;
+import com.inspection_diff.XmlDiff;
+import com.inspection_diff.XmlDiffResult;
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationType;
@@ -121,7 +120,7 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
             Path outDir = Paths.get(getOutputAsStr());
             try {
                 if (Files.exists(outDir) && Files.list(outDir).count() > 0) {
-                    int message = Messages.showOkCancelDialog("Some files may be overwritten. Do you want to continue?", "The output directory already contains files", null);
+                    int message = Messages.showOkCancelDialog("Some files may be overwritten. Do you want to continue?", "The Output Directory Already Contains Files", null);
                     if (message != OK) {
                         return CONTINUE;
                     }
