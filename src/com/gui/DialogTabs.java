@@ -1,11 +1,13 @@
 package com.gui;
 
+import com.intellij.openapi.Disposable;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.ui.components.JBTabbedPane;
 
 import java.awt.*;
 
-public class DialogTabs extends JBTabbedPane {
+public class DialogTabs extends JBTabbedPane implements Disposable {
     private FilterDiffPanel filterDiffPanel;
     private FilterPanel filterPanel;
     public DialogTabs(Project project) {
@@ -14,6 +16,8 @@ public class DialogTabs extends JBTabbedPane {
         filterPanel = new FilterPanel(project);
         insertTab("Filter and diff", null, filterDiffPanel, "Filter/diff inspection results", 0);
         insertTab("Filter only", null, filterPanel, "Filter inspection results", 1);
+        Disposer.register(this, filterDiffPanel);
+        Disposer.register(this, filterPanel);
     }
 
     public DialogTab getCurrentTab() {
@@ -23,5 +27,9 @@ public class DialogTabs extends JBTabbedPane {
         } else {
             return null;
         }
+    }
+
+    @Override
+    public void dispose() {
     }
 }

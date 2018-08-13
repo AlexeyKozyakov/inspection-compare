@@ -1,4 +1,4 @@
-package com.inspectionDiff;
+package com.util;
 
 import com.intellij.analysis.PerformAnalysisInBackgroundOption;
 import com.intellij.codeInspection.InspectionApplication;

@@ -1,12 +1,16 @@
 package com.gui;
 
-import com.inspectionDiff.OfflineViewer;
+import com.intellij.ui.JBColor;
+import com.intellij.util.ui.UIUtil;
+import com.util.FileChecker;
+import com.util.OfflineViewer;
 import com.inspectionDiff.XmlDiff;
 import com.inspectionDiff.XmlDiffResult;
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationType;
 import com.intellij.notification.Notifications;
+import com.intellij.openapi.Disposable;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
@@ -15,6 +19,7 @@ import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.ui.TextBrowseFolderListener;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.openapi.ui.ValidationInfo;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.DocumentAdapter;
@@ -36,7 +41,7 @@ import java.nio.file.Paths;
 import static com.intellij.openapi.ui.Messages.OK;
 
 
-public class FilterPanel extends JBPanel implements DialogTab {
+public class FilterPanel extends JBPanel implements DialogTab, Disposable {
     private Project project;
     private JBLabel inspectionResultLabel = new JBLabel("Inspection result");
     private JBLabel filterLabel = new JBLabel("Filter");
@@ -44,6 +49,7 @@ public class FilterPanel extends JBPanel implements DialogTab {
     private LanguageTextField filter;
     private JBLabel outputLabel = new JBLabel("Output");
     private TextFieldWithBrowseButton output = new TextFieldWithBrowseButton();
+    private JBLabel inputInfo = new JBLabel();
     private boolean validationFlag = false;
 
     public FilterPanel(Project project) {
@@ -51,10 +57,13 @@ public class FilterPanel extends JBPanel implements DialogTab {
         filter = new LanguageTextField(RegExpLanguage.INSTANCE, project, "");
         inspectionResult.addBrowseFolderListener(new TextBrowseFolderListener(new InspectionChooseDescriptor()));
         output.addBrowseFolderListener(new TextBrowseFolderListener(new InspectionChooseDescriptor()));
+        inputInfo.setVisible(false);
+        inputInfo.setFontColor(UIUtil.FontColor.BRIGHTER);
         inspectionResult.getTextField().getDocument().addDocumentListener(new DocumentAdapter() {
             @Override
             protected void textChanged(DocumentEvent e) {
                 Path input = Paths.get(getInspectionResultAsStr());
+                FileChecker.setInfo(inspectionResult.getTextField(), inputInfo);
                 if (input != null && input.getParent() != null && input.getFileName() != null) {
                     output.setText(input.getParent().resolve(input.getFileName().toString() + "_filtered").toString());
                 }
@@ -63,6 +72,7 @@ public class FilterPanel extends JBPanel implements DialogTab {
         loadState();
         add(inspectionResultLabel);
         add(inspectionResult);
+        add(inputInfo);
         add(filterLabel);
         add(filter);
         add(outputLabel);
@@ -71,10 +81,13 @@ public class FilterPanel extends JBPanel implements DialogTab {
         setLayout(verticalLayout);
         verticalLayout.addLayoutComponent(null, inspectionResultLabel);
         verticalLayout.addLayoutComponent(null, inspectionResult);
+        verticalLayout.addLayoutComponent(null, inputInfo);
         verticalLayout.addLayoutComponent(null, filterLabel);
         verticalLayout.addLayoutComponent(null, filter);
         verticalLayout.addLayoutComponent(null, outputLabel);
         verticalLayout.addLayoutComponent(null, output);
+        Disposer.register(this, inspectionResult);
+        Disposer.register(this, output);
     }
 
     @Override
@@ -93,8 +106,8 @@ public class FilterPanel extends JBPanel implements DialogTab {
                 return new ValidationInfo("Choose output folder", output.getTextField());
             }
         }
-        if (!Files.exists(Paths.get(getInspectionResultAsStr()))) {
-            return new ValidationInfo("Inspection results folder does not exist", inspectionResult.getTextField());
+        if (!FileChecker.checkFile(Paths.get(getInspectionResultAsStr()))) {
+            return new ValidationInfo("Folder doesn't contain inspection results", inspectionResult.getTextField());
         }
         return null;
     }
@@ -178,4 +191,8 @@ public class FilterPanel extends JBPanel implements DialogTab {
     }
 
 
+    @Override
+    public void dispose() {
+
+    }
 }
