@@ -76,7 +76,7 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
         add(filter);
         add(outputLabel);
         add(output);
-        VerticalLayout verticalLayout = new VerticalLayout(1);
+        VerticalLayout verticalLayout = new VerticalLayout(2);
         setLayout(verticalLayout);
         verticalLayout.addLayoutComponent(null, inspectionResultLabel);
         verticalLayout.addLayoutComponent(null, inspectionResult);
@@ -105,7 +105,10 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
                 return new ValidationInfo("Choose output folder", output.getTextField());
             }
         }
-        if (!FileChecker.checkFile(Paths.get(getInspectionResultAsStr()))) {
+        if (!getInspectionResultAsStr().isEmpty() && Files.notExists(Paths.get(getInspectionResultAsStr()))) {
+            return new ValidationInfo("Folder doesn't exist", inspectionResult.getTextField());
+        }
+        if (!getInspectionResultAsStr().isEmpty() && !FileChecker.checkFile(Paths.get(getInspectionResultAsStr()))) {
             return new ValidationInfo("Folder doesn't contain inspection results", inspectionResult.getTextField());
         }
         return null;
@@ -149,6 +152,7 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
             return EXIT;
         } else {
             validationFlag = true;
+            validation = doValidate();
             validation.component.grabFocus();
             return CONTINUE;
         }

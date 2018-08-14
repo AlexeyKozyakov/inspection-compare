@@ -2,8 +2,6 @@ package com.gui;
 
 import com.intellij.ui.*;
 import com.intellij.ui.components.*;
-import com.intellij.uiDesigner.core.Spacer;
-import com.intellij.util.ui.JBFont;
 import com.util.FileChecker;
 import com.util.OfflineViewer;
 import com.inspection_diff.XmlDiff;
@@ -52,8 +50,8 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
     private JBLabel filterLabel = new JBLabel("Filter");
     private JBLabel addedWarningsLabel = new JBLabel("Added warnings output");
     private JBLabel removedWarningsLabel = new JBLabel("Removed warnings output");
-    private JBLabel replaceFromLabel = new JBLabel("Replace from:");
-    private JBLabel replaceToLabel = new JBLabel("to:");
+    private JBLabel replaceFromLabel = new JBLabel("Find what:");
+    private JBLabel replaceToLabel = new JBLabel("Replace with:");
     private TextFieldWithBrowseButton baseline = new TextFieldWithBrowseButton();
     private TextFieldWithBrowseButton updated = new TextFieldWithBrowseButton();
     private LanguageTextField filter;
@@ -67,7 +65,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
     private JBTextField replaceTo;
     private Path basePath;
     private Path updatedPath;
-    private boolean validationFlag = false;
+    private boolean validationFlag;
     private XmlDiffResult result = new XmlDiffResult();
     public FilterDiffPanel(Project project) {
         baseInfo.setVisible(false);
@@ -96,8 +94,8 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         buttonContainer.add(swapButton, BorderLayout.LINE_START);
         swapButton.addActionListener(actionEvent -> {
             String tmp;
-            tmp = baseline.getText();
-            baseline.setText(updated.getText());
+            tmp = getBaseAsStr();
+            baseline.setText(getUpdatedAsStr());
             updated.setText(tmp);
             grabFocus();
         });
@@ -111,8 +109,8 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
             protected void textChanged(DocumentEvent e) {
                 updatedPath = Paths.get(updated.getText());
                 FileChecker.setInfo(updated.getTextField(), updatedInfo);
-                if (!baseline.getText().isEmpty()) {
-                    basePath = Paths.get(baseline.getText());
+                if (!getBaseAsStr().isEmpty()) {
+                    basePath = Paths.get(getBaseAsStr());
                     generateOutPaths();
                 }
             }
@@ -122,8 +120,8 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
             protected void textChanged(DocumentEvent e) {
                 basePath = Paths.get(baseline.getText());
                 FileChecker.setInfo(baseline.getTextField(), baseInfo);
-                if (!updated.getText().isEmpty()) {
-                    updatedPath = Paths.get(updated.getText());
+                if (!getUpdatedAsStr().isEmpty()) {
+                    updatedPath = Paths.get(getUpdatedAsStr());
                     generateOutPaths();
                 }
             }
@@ -142,8 +140,9 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         replaceContainer.add(replaceFrom);
         replaceContainer.add(replaceToLabel);
         replaceContainer.add(replaceTo);
+        replaceContainer.setBorder(BorderFactory.createEmptyBorder(8,16,8,1));
 
-        VerticalLayout containerLayout = new VerticalLayout(1);
+        VerticalLayout containerLayout = new VerticalLayout(2);
         replaceContainer.setLayout(containerLayout);
         containerLayout.addLayoutComponent(replaceFromLabel, null);
         containerLayout.addLayoutComponent(replaceFrom, null);
@@ -151,7 +150,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         containerLayout.addLayoutComponent(replaceTo, null);
         replaceContainer.setVisible(false);
         setPreferredSize(new Dimension(800, 540));
-        VerticalLayout layout = new VerticalLayout(1);
+        VerticalLayout layout = new VerticalLayout(2);
         add(baselineLabel);
         add(baseline);
         add(baseInfo);
@@ -224,10 +223,19 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
                 return new ValidationInfo("Choose removed warnings out folder", removedWarnings.getTextField());
             }
         }
-        if (!FileChecker.checkFile(Paths.get(getBaseAsStr())) ) {
+        if (!getBaseAsStr().isEmpty() && Files.notExists(basePath)) {
+            return new ValidationInfo("Baseline folder doesn't exist", baseline.getTextField());
+        }
+        if (!getUpdatedAsStr().isEmpty() && Files.notExists(updatedPath)) {
+            return new ValidationInfo("Updated folder doesn't exist", updated.getTextField());
+        }
+        if (!getBaseAsStr().isEmpty() && !FileChecker.checkFile(basePath)) {
             return new ValidationInfo("Baseline folder doesn't contain inspection results", baseline.getTextField());
         }
-        if (!FileChecker.checkFile(Paths.get(getUpdatedAsStr())) ) {
+        if (!getUpdatedAsStr().isEmpty() && !FileChecker.checkFile(updatedPath)) {
+            return new ValidationInfo("Updated folder doesn't contain inspection results", updated.getTextField());
+        }
+        if (!getUpdatedAsStr().isEmpty() && !FileChecker.checkFile(updatedPath)) {
             return new ValidationInfo("Updated folder doesn't contain inspection results", updated.getTextField());
         }
         if (!getBaseAsStr().isEmpty() && getBaseAsStr().equals(getUpdatedAsStr())) {
@@ -282,6 +290,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
             return EXIT;
         } else {
             validationFlag = true;
+            validation = doValidate();
             validation.component.grabFocus();
             return CONTINUE;
         }

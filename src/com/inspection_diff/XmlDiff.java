@@ -1,5 +1,6 @@
 package com.inspection_diff;
 import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.vcs.history.VcsRevisionNumber;
 import org.jetbrains.annotations.NotNull;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -74,8 +75,10 @@ public class XmlDiff {
         }
         Document added = diff(left, right, replaceFrom, replaceTo, compareResult);
         Document removed = diff(right, left, replaceFrom, replaceTo, null);
-        write(outAdded, added);
-        write(outRemoved, removed);
+        if (added != null)
+            write(outAdded, added);
+        if (removed != null)
+            write(outRemoved, removed);
         return compareResult;
     }
 
@@ -178,17 +181,27 @@ public class XmlDiff {
     private static Map<List<String>, Element> getModel(Document document, String replaceFrom, String replaceTo) {
         NodeList nodes = document.getDocumentElement().getChildNodes();
         Map<List<String>, Element> result = new LinkedHashMap<>();
+        Map<List<String>, Integer> duplicateKeys = new HashMap<>();
         for(int i=0; i<nodes.getLength(); i++) {
             Node node = nodes.item(i);
             if(node instanceof Element) {
                 Element problem = (Element) node;
                 Element file = (Element) problem.getElementsByTagName("file").item(0);
-                if(file != null && !file.getTextContent().endsWith(".java")) continue;
+//                if(file != null && !file.getTextContent().endsWith(".java")) continue;
+                Element pack = (Element) problem.getElementsByTagName("package").item(0);
                 Element line = (Element) problem.getElementsByTagName("line").item(0);
                 Element description = (Element) problem.getElementsByTagName("description").item(0);
-                if(file != null && line != null && description != null) {
-                    result.put(Arrays.asList(file.getTextContent(), line.getTextContent(),
-                            description.getTextContent().replaceFirst("replaced with.+", "").replaceAll(replaceFrom, replaceTo)), problem);
+                if(description != null) {
+                    List<String> key = Arrays.asList((file == null) ? "" : file.getTextContent(), (pack == null) ? "" : pack.getTextContent(), (line == null) ? "" : line.getTextContent(),
+                            description.getTextContent().replaceFirst("replaced with.+", "").replaceAll(replaceFrom, replaceTo), String.valueOf(0));
+                    if (result.containsKey(key)) {
+                        List<String> duplicate = key.subList(0, 4);
+                        Integer index = duplicateKeys.get(duplicate);
+                        index = (index != null) ? index + 1 : 1;
+                        duplicateKeys.put(duplicate, index);
+                        key.set(4, String.valueOf(index));
+                    }
+                    result.put(key, problem);
                 }
             }
         }
@@ -205,8 +218,11 @@ public class XmlDiff {
         if (compareRes != null) {
             compareRes.baseProblems = leftModel.size();
             compareRes.updatedProblems = rightModel.size();
-            compareRes.added =rightSansLeft.size();
+            compareRes.added = rightSansLeft.size();
             compareRes.removed = leftSansRight.size();
+        }
+        if (rightSansLeft.isEmpty()) {
+            return null;
         }
         Document res = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
         Element root = res.createElement("problems");
