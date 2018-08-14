@@ -95,6 +95,14 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
     }
 
     @Override
+    public void clear() {
+        inspectionResult.setText("");
+        filter.setText("");
+        output.setText("");
+        grabFocus();
+    }
+
+    @Override
     public ValidationInfo doValidate() {
         //don't show message about empty fields before button is pressed
         if (validationFlag) {

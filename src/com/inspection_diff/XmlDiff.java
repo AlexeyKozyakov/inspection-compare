@@ -1,6 +1,5 @@
 package com.inspection_diff;
 import com.intellij.openapi.progress.ProgressIndicator;
-import com.intellij.openapi.vcs.history.VcsRevisionNumber;
 import org.jetbrains.annotations.NotNull;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;

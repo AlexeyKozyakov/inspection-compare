@@ -13,7 +13,7 @@ public class DiffMenuItem extends AnAction {
     @Override
     public void actionPerformed(AnActionEvent event) {
         ApplicationManager.getApplication().invokeLater(() -> {
-            DiffDialog dialog = new DiffDialog(event.getProject(), true);
+            DiffDialog dialog = new DiffDialog(event.getProject());
             dialog.show();
         });
     }

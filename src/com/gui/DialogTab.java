@@ -10,4 +10,5 @@ public interface DialogTab {
     ValidationInfo doValidate();
     int run();
     JComponent getFocusComponent();
+    void clear();
 }
