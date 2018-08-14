@@ -99,7 +99,7 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
         inspectionResult.setText("");
         filter.setText("");
         output.setText("");
-        grabFocus();
+        getFocusComponent().grabFocus();
     }
 
     @Override

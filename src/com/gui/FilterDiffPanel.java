@@ -346,7 +346,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         removedWarnings.setText("");
         replaceFrom.setText("");
         replaceTo.setText("");
-        grabFocus();
+        getFocusComponent().grabFocus();
     }
 
     private void saveState() {
