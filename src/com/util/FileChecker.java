@@ -34,8 +34,8 @@ public class FileChecker {
         if (checkFile(folder)) {
             try {
                 long count = Files.list(folder).filter(p -> p.toString().toLowerCase().endsWith(".xml")).count() - 1;
-                info = (count != 1) ? count + " .xml files found" : "one .xml file with " +
-                        XmlDiff.getWarningsCount(Files.list(folder).filter(p -> p.getFileName().toString().toLowerCase().endsWith(".xml") && !p.getFileName().toString().equals(".descriptions.xml")).findAny().get()) + " warnings found";
+                info = (count != 1) ? count + " .xml files were found" : "one .xml file with " +
+                        XmlDiff.getWarningsCount(Files.list(folder).filter(p -> p.getFileName().toString().toLowerCase().endsWith(".xml") && !p.getFileName().toString().equals(".descriptions.xml")).findAny().get()) + " warnings was found";
             } catch (Exception e) {
                 info = null;
             }

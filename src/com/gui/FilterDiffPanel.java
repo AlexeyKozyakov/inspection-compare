@@ -193,11 +193,11 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
     private void generateOutPaths() {
         String baseFilename = (basePath == null || basePath.getFileName() == null) ? "" : basePath.getFileName().toString();
         String updatedFilename = (updatedPath == null || updatedPath.getFileName() == null) ? "" : updatedPath.getFileName().toString();
-        Path parent;
+        Path parent = null;
         if (basePath != null && basePath.getParent() != null) {
             parent = basePath.getParent();
         }
-        else {
+        else if (updatedPath != null) {
             parent = updatedPath.getParent();
         }
         if (parent != null) {
