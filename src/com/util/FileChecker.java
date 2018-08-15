@@ -52,4 +52,8 @@ public class FileChecker {
         }
         return valid;
     }
+
+    public static boolean checkInfo(JLabel label) {
+        return  (label.isVisible() && label.getText().startsWith("one"));
+    }
 }

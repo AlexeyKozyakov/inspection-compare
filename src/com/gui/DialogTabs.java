@@ -14,8 +14,8 @@ public class DialogTabs extends JBTabbedPane implements Disposable {
         super(2);
         filterDiffPanel = new FilterDiffPanel(project);
         filterPanel = new FilterPanel(project);
-        insertTab("Filter and Diff", null, filterDiffPanel, "Filter/diff inspection results", 0);
-        insertTab("Filter Only", null, filterPanel, "Filter inspection results", 1);
+        insertTab("Diff", null, filterDiffPanel, "Diff inspection results", 0);
+        insertTab("Filter", null, filterPanel, "Filter inspection results", 1);
         Disposer.register(this, filterDiffPanel);
         Disposer.register(this, filterPanel);
     }

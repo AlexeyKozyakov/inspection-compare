@@ -1,7 +1,10 @@
 package com.gui;
 
+import com.intellij.openapi.editor.event.DocumentListener;
 import com.intellij.ui.*;
 import com.intellij.ui.components.*;
+import com.intellij.ui.components.panels.HorizontalLayout;
+import com.intellij.util.Alarm;
 import com.util.FileChecker;
 import com.util.OfflineViewer;
 import com.inspection_diff.XmlDiff;
@@ -32,6 +35,7 @@ import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import java.awt.*;
 import java.awt.event.ItemEvent;
+import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.AccessDeniedException;
@@ -47,28 +51,38 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
     private JBLabel updatedLabel = new JBLabel("Updated inspection result");
     private JBLabel baseInfo = new JBLabel();
     private JBLabel updatedInfo = new JBLabel();
-    private JBLabel filterLabel = new JBLabel("Filter");
     private JBLabel addedWarningsLabel = new JBLabel("Added warnings output");
     private JBLabel removedWarningsLabel = new JBLabel("Removed warnings output");
     private JBLabel replaceFromLabel = new JBLabel("Find what:");
     private JBLabel replaceToLabel = new JBLabel("Replace with:");
+    private JBLabel filterLabel = new JBLabel("Filter by substring:");
     private TextFieldWithBrowseButton baseline = new TextFieldWithBrowseButton();
     private TextFieldWithBrowseButton updated = new TextFieldWithBrowseButton();
     private LanguageTextField filter;
     private TextFieldWithBrowseButton addedWarnings = new TextFieldWithBrowseButton();
     private TextFieldWithBrowseButton removedWarnings = new TextFieldWithBrowseButton();
-    private JBCheckBox checkBox = new JBCheckBox();
+    private JBCheckBox normalizeCheckBox = new JBCheckBox();
+    private JBCheckBox filterCheckbox = new JBCheckBox();
     private JButton swapButton = new JButton();
     private JBPanel buttonContainer = new JBPanel();
-    private JBPanel replaceContainer = new JBPanel();
+    private JBPanel checkboxContainer = new JBPanel();
+    private JBPanel normalizeContainer = new JBPanel();
+    private JBPanel filterContainer = new JBPanel();
+    private JBLabel resultsPreview = new JBLabel();
     private LanguageTextField replaceFrom;
     private JBTextField replaceTo;
     private Path basePath;
     private Path updatedPath;
     private boolean validationFlag;
     private XmlDiffResult result = new XmlDiffResult();
+    private Alarm previewAlarm = new Alarm(this);
     public FilterDiffPanel(Project project) {
+        //hotkeys
+        normalizeCheckBox.setMnemonic(KeyEvent.VK_N);
+        filterCheckbox.setMnemonic(KeyEvent.VK_F);
         baseInfo.setVisible(false);
+        resultsPreview.setVisible(false);
+        resultsPreview.setFontColor(UIUtil.FontColor.BRIGHTER);
         baseInfo.setFontColor(UIUtil.FontColor.BRIGHTER);
         updatedInfo.setVisible(false);
         updatedInfo.setFontColor(UIUtil.FontColor.BRIGHTER);
@@ -113,6 +127,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
                     basePath = Paths.get(getBaseAsStr());
                     generateOutPaths();
                 }
+                preview();
             }
         });
         baseline.getTextField().getDocument().addDocumentListener(new DocumentAdapter() {
@@ -124,31 +139,74 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
                     updatedPath = Paths.get(getUpdatedAsStr());
                     generateOutPaths();
                 }
+                preview();
             }
         });
-        checkBox.setText("Normalize");
-        checkBox.addItemListener(e -> {
+        replaceFrom.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void documentChanged(com.intellij.openapi.editor.event.DocumentEvent event) {
+                preview();
+            }
+        });
+        replaceTo.getDocument().addDocumentListener(new DocumentAdapter() {
+            @Override
+            protected void textChanged(DocumentEvent e) {
+                preview();
+            }
+        });
+        filter.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void documentChanged(com.intellij.openapi.editor.event.DocumentEvent event) {
+                preview();
+            }
+        });
+        filterCheckbox.setText("Filter");
+        normalizeCheckBox.setText("Normalize");
+        filterCheckbox.addItemListener(e -> {
             if (e.getStateChange() == ItemEvent.SELECTED) {
-                replaceContainer.setVisible(true);
-                replaceFrom.grabFocus();
+                filterContainer.setVisible(true);
+                filter.grabFocus();
             } else {
-                replaceContainer.setVisible(false);
+                filterContainer.setVisible(false);
                 grabFocus();
             }
         });
-        replaceContainer.add(replaceFromLabel);
-        replaceContainer.add(replaceFrom);
-        replaceContainer.add(replaceToLabel);
-        replaceContainer.add(replaceTo);
-        replaceContainer.setBorder(BorderFactory.createEmptyBorder(8,16,8,1));
+        filterContainer.add(filterLabel);
+        filterContainer.add(filter);
+        filterContainer.setVisible(false);
+        VerticalLayout filterLayout = new VerticalLayout(2);
+        filterLayout.addLayoutComponent(filterLabel, null);
+        filterLayout.addLayoutComponent(filter, null);
+        filterContainer.setLayout(filterLayout);
+        filterContainer.setBorder(BorderFactory.createEmptyBorder(8,16,8,1));
+        checkboxContainer.add(normalizeCheckBox);
+        checkboxContainer.add(filterCheckbox);
+        HorizontalLayout checkboxLayout = new HorizontalLayout(30);
+        checkboxLayout.addLayoutComponent(normalizeCheckBox, null);
+        checkboxLayout.addLayoutComponent(filterCheckbox, null);
+        checkboxContainer.setLayout(checkboxLayout);
+        normalizeCheckBox.addItemListener(e -> {
+            if (e.getStateChange() == ItemEvent.SELECTED) {
+                normalizeContainer.setVisible(true);
+                replaceFrom.grabFocus();
+            } else {
+                normalizeContainer.setVisible(false);
+                grabFocus();
+            }
+        });
+        normalizeContainer.add(replaceFromLabel);
+        normalizeContainer.add(replaceFrom);
+        normalizeContainer.add(replaceToLabel);
+        normalizeContainer.add(replaceTo);
+        normalizeContainer.setBorder(BorderFactory.createEmptyBorder(8,16,8,1));
 
         VerticalLayout containerLayout = new VerticalLayout(2);
-        replaceContainer.setLayout(containerLayout);
+        normalizeContainer.setLayout(containerLayout);
         containerLayout.addLayoutComponent(replaceFromLabel, null);
         containerLayout.addLayoutComponent(replaceFrom, null);
         containerLayout.addLayoutComponent(replaceToLabel, null);
         containerLayout.addLayoutComponent(replaceTo, null);
-        replaceContainer.setVisible(false);
+        normalizeContainer.setVisible(false);
         setPreferredSize(new Dimension(800, 540));
         VerticalLayout layout = new VerticalLayout(2);
         add(baselineLabel);
@@ -158,14 +216,14 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         add(updatedLabel);
         add(updated);
         add(updatedInfo);
-        add(checkBox);
-        add(replaceContainer);
-        add(filterLabel);
-        add(filter);
+        add(checkboxContainer);
+        add(normalizeContainer);
+        add(filterContainer);
         add(addedWarningsLabel);
         add(addedWarnings);
         add(removedWarningsLabel);
         add(removedWarnings);
+        add(resultsPreview);
         layout.addLayoutComponent(baselineLabel, null);
         layout.addLayoutComponent(baseline, null);
         layout.addLayoutComponent(baseInfo, null);
@@ -173,14 +231,14 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         layout.addLayoutComponent(updatedLabel, null);
         layout.addLayoutComponent(updated, null);
         layout.addLayoutComponent(updatedInfo, null);
-        layout.addLayoutComponent(checkBox, null);
-        layout.addLayoutComponent(replaceContainer, null);
-        layout.addLayoutComponent(filterLabel, null);
-        layout.addLayoutComponent(filter, null);
+        layout.addLayoutComponent(checkboxContainer, null);
+        layout.addLayoutComponent(normalizeContainer, null);
+        layout.addLayoutComponent(filterContainer, null);
         layout.addLayoutComponent(addedWarningsLabel, null);
         layout.addLayoutComponent(addedWarnings, null);
         layout.addLayoutComponent(removedWarningsLabel, null);
         layout.addLayoutComponent(removedWarnings, null);
+        layout.addLayoutComponent(resultsPreview, null);
         setLayout(layout);
         Disposer.register(this, baseline);
         Disposer.register(this, updated);
@@ -189,6 +247,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         basePath = Paths.get(getBaseAsStr());
         updatedPath = Paths.get(getUpdatedAsStr());
         checkFolders();
+        preview();
     }
     private void generateOutPaths() {
         String baseFilename = (basePath == null || basePath.getFileName() == null) ? "" : basePath.getFileName().toString();
@@ -272,17 +331,9 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
             ProgressManager.getInstance().run(new Task.Backgroundable(project, "Comparing") {
                 @Override
                 public void run(@NotNull ProgressIndicator indicator) {
-                    try {
-                        result = XmlDiff.compareFolders(getBaseAsStr(), getUpdatedAsStr(), getAddedWarningsAsStr(),
-                                getRemovedWarningsAsStr(), getFilterAsStr(), checkBox.isSelected() ? replaceFrom.getText() : "",
-                                checkBox.isSelected() ? replaceTo.getText() : "", indicator);
-                        if (!indicator.isCanceled()) {
-                            sendNotification(result);
-                        }
-                    } catch (AccessDeniedException e) {
-                        Notifications.Bus.notify(new Notification("Plugins notifications", "Error", "Access to folder denied", NotificationType.ERROR));
-                    } catch (Exception e) {
-                        Notifications.Bus.notify(new Notification("Plugins notifications", "Error", e.toString(), NotificationType.ERROR));
+                    diff(indicator, true);
+                    if (!indicator.isCanceled()) {
+                        sendNotification(result);
                     }
                 }
             });
@@ -354,6 +405,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.updated", updated.getText());
         PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.addedWarnings", addedWarnings.getText());
         PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.removedWarnings", removedWarnings.getText());
+        PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.diffFilter", filter.getText());
     }
 
     private void loadState() {
@@ -361,6 +413,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         updated.setText(PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.updated"));
         addedWarnings.setText(PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.addedWarnings"));
         removedWarnings.setText(PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.removedWarnings"));
+        filter.setText(PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.diffFilter"));
     }
 
     private void checkFolders(){
@@ -381,6 +434,43 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         g.fillRect(0,0,w,h);
         g.dispose();
         return dyed;
+    }
+
+    private void diff(ProgressIndicator indicator, boolean out) {
+        try {
+            if (out) {
+                result = XmlDiff.compareFolders(getBaseAsStr(), getUpdatedAsStr(), getAddedWarningsAsStr(),
+                        getRemovedWarningsAsStr(), filterCheckbox.isSelected() ? getFilterAsStr() : "", normalizeCheckBox.isSelected() ? replaceFrom.getText() : "",
+                        normalizeCheckBox.isSelected() ? replaceTo.getText() : "", indicator);
+            } else {
+                result = XmlDiff.compareFolders(getBaseAsStr(), getUpdatedAsStr(), null, null, getFilterAsStr(), normalizeCheckBox.isSelected() ? replaceFrom.getText() : "",
+                        normalizeCheckBox.isSelected() ? replaceTo.getText() : "", indicator);
+            }
+        } catch (AccessDeniedException e) {
+            Notifications.Bus.notify(new Notification("Plugins notifications", "Error", "Access to folder denied", NotificationType.ERROR));
+        } catch (Exception e) {
+            Notifications.Bus.notify(new Notification("Plugins notifications", "Error", e.toString(), NotificationType.ERROR));
+        }
+    }
+
+    private void preview() {
+        if (resultsPreview.isVisible()) {
+            resultsPreview.setVisible(false);
+        }
+        previewAlarm.cancelAllRequests();
+        if (doValidate() == null && FileChecker.checkInfo(baseInfo) && FileChecker.checkInfo(updatedInfo)) {
+            previewAlarm.addRequest(() -> {
+                ProgressManager.getInstance().run(new Task.Backgroundable(project, "Comparing") {
+                    @Override
+                    public void run(@NotNull ProgressIndicator indicator) {
+                        diff(indicator, false);
+                        resultsPreview.setText("<html><br>  Added warnings: " + result.added + "<br>" +
+                                "  Removed warnings: " + result.removed + "</html>");
+                    }
+                });
+                resultsPreview.setVisible(true);
+            }, 2000);
+        }
     }
 
     @Override

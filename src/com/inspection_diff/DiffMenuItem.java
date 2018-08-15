@@ -7,7 +7,7 @@ import com.intellij.openapi.application.ApplicationManager;
 public class DiffMenuItem extends AnAction {
 
     public DiffMenuItem() {
-        super(" Filter/diff inspection results...");
+        super(" Filter/Diff inspection results...");
     }
 
     @Override

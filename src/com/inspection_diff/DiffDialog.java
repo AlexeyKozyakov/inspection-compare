@@ -16,6 +16,8 @@ import static com.gui.DialogTab.EXIT;
 
 public class DiffDialog extends DialogWrapper {
     private final DialogTabs dialogTabs;
+    private RunAction runAction = new RunAction();
+    private ClearAction clearAction = new ClearAction();
     protected DiffDialog(@Nullable Project project) {
         super(project, true);
         dialogTabs = new DialogTabs(project);
@@ -25,12 +27,13 @@ public class DiffDialog extends DialogWrapper {
         Disposer.register(getDisposable(), dialogTabs);
         setValidationDelay(100);
         startTrackingValidation();
+        getRootPane().setDefaultButton(getButton(runAction));
     }
 
     @NotNull
     @Override
     protected Action[] createLeftSideActions() {
-        return new Action[] {new ClearAction()};
+        return new Action[] {clearAction};
     }
 
     @Nullable
@@ -43,7 +46,7 @@ public class DiffDialog extends DialogWrapper {
     @NotNull
     @Override
     protected Action[] createActions() {
-        return new Action[] { new RunAction(), getCancelAction()};
+        return new Action[] { runAction, getCancelAction()};
     }
 
     @Nullable

@@ -194,11 +194,13 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
     private void loadState() {
         inspectionResult.setText(PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.inspectionResult"));
         output.setText(PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.output"));
+        filter.setText(PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.filter"));
     }
 
     private void saveState() {
         PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.inspectionResult", inspectionResult.getText());
         PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.output", output.getText());
+        PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.filter", filter.getText());
     }
 
 
