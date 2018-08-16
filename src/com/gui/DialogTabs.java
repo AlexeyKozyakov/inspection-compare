@@ -29,6 +29,15 @@ public class DialogTabs extends JBTabbedPane implements Disposable {
         }
     }
 
+    public DialogTab getTabAt(int index) {
+        Component tab = getComponentAt(index);
+        if (tab instanceof DialogTab) {
+            return (DialogTab) tab;
+        } else {
+            return null;
+        }
+    }
+
     @Override
     public void dispose() {
     }

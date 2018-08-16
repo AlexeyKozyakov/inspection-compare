@@ -1,5 +1,7 @@
 package com.gui;
 
+import com.intellij.openapi.editor.event.DocumentListener;
+import com.intellij.util.Alarm;
 import com.intellij.util.ui.UIUtil;
 import com.util.FileChecker;
 import com.util.OfflineViewer;
@@ -49,7 +51,9 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
     private JBLabel outputLabel = new JBLabel("Output");
     private TextFieldWithBrowseButton output = new TextFieldWithBrowseButton();
     private JBLabel inputInfo = new JBLabel();
+    private JBLabel resultsPreview = new JBLabel();
     private boolean validationFlag = false;
+    private Alarm previewAlarm = new Alarm(this);
 
     public FilterPanel(Project project) {
         this.project = project;
@@ -58,6 +62,8 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
         output.addBrowseFolderListener(new TextBrowseFolderListener(new InspectionChooseDescriptor()));
         inputInfo.setVisible(false);
         inputInfo.setFontColor(UIUtil.FontColor.BRIGHTER);
+        resultsPreview.setVisible(false);
+        resultsPreview.setFontColor(UIUtil.FontColor.BRIGHTER);
         inspectionResult.getTextField().getDocument().addDocumentListener(new DocumentAdapter() {
             @Override
             protected void textChanged(DocumentEvent e) {
@@ -66,6 +72,13 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
                 if (input != null && input.getParent() != null && input.getFileName() != null) {
                     output.setText(input.getParent().resolve(input.getFileName().toString() + "_filtered").toString());
                 }
+                preview();
+            }
+        });
+        filter.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void documentChanged(com.intellij.openapi.editor.event.DocumentEvent event) {
+                preview();
             }
         });
         loadState();
@@ -76,17 +89,11 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
         add(filter);
         add(outputLabel);
         add(output);
-        VerticalLayout verticalLayout = new VerticalLayout(2);
-        setLayout(verticalLayout);
-        verticalLayout.addLayoutComponent(null, inspectionResultLabel);
-        verticalLayout.addLayoutComponent(null, inspectionResult);
-        verticalLayout.addLayoutComponent(null, inputInfo);
-        verticalLayout.addLayoutComponent(null, filterLabel);
-        verticalLayout.addLayoutComponent(null, filter);
-        verticalLayout.addLayoutComponent(null, outputLabel);
-        verticalLayout.addLayoutComponent(null, output);
+        add(resultsPreview);
+        installLayout();
         Disposer.register(this, inspectionResult);
         Disposer.register(this, output);
+        preview();
     }
 
     @Override
@@ -103,6 +110,11 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
     }
 
     @Override
+    public TextFieldWithBrowseButton getLastField() {
+        return output;
+    }
+
+    @Override
     public ValidationInfo doValidate() {
         //don't show message about empty fields before button is pressed
         if (validationFlag) {
@@ -111,6 +123,9 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
             }
             if (getOutputAsStr().isEmpty()) {
                 return new ValidationInfo("Choose output folder", output.getTextField());
+            }
+            if (!FileChecker.checkRegexp(getFilterAsStr())) {
+                return new ValidationInfo("Syntax error in regex", filter);
             }
         }
         if (!getInspectionResultAsStr().isEmpty() && Files.notExists(Paths.get(getInspectionResultAsStr()))) {
@@ -126,7 +141,8 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
     public int run() {
         ValidationInfo validation = doValidate();
         boolean emptyInput = getInspectionResultAsStr().isEmpty() || getOutputAsStr().isEmpty();
-        if (validation == null && !emptyInput) {
+        boolean goodRegex = FileChecker.checkRegexp(getFilterAsStr());
+        if (validation == null && !emptyInput && goodRegex) {
             //check if output folder exists and contains files
             Path outDir = Paths.get(getOutputAsStr());
             try {
@@ -144,16 +160,7 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
             ProgressManager.getInstance().run(new Task.Backgroundable(project, "Filtering") {
                 @Override
                 public void run(@NotNull ProgressIndicator indicator) {
-                    try {
-                        XmlDiffResult result = XmlDiff.filterFolder(getInspectionResultAsStr(), getOutputAsStr(), getFilterAsStr(), indicator);
-                        if (!indicator.isCanceled()) {
-                            sendNotification(result);
-                        }
-                    } catch (AccessDeniedException e) {
-                        Notifications.Bus.notify(new Notification("Plugins notifications", "Error", "Access to folder denied", NotificationType.ERROR));
-                    } catch (Exception e) {
-                        Notifications.Bus.notify(new Notification("Plugins notifications", "Error", e.toString(), NotificationType.ERROR));
-                    }
+                    filter(indicator, true);
                 }
             });
             saveState();
@@ -203,6 +210,57 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
         PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.filter", filter.getText());
     }
 
+    private XmlDiffResult filter(ProgressIndicator indicator, boolean out) {
+        XmlDiffResult result = null;
+        try {
+            if (out) {
+                result = XmlDiff.filterFolder(getInspectionResultAsStr(), getOutputAsStr(), getFilterAsStr(), indicator);
+            } else {
+                result = XmlDiff.filterFolder(getInspectionResultAsStr(), null, getFilterAsStr(), indicator);
+            }
+            if (!indicator.isCanceled() && out) {
+                sendNotification(result);
+            }
+        } catch (AccessDeniedException e) {
+            Notifications.Bus.notify(new Notification("Plugins notifications", "Error", "Access to folder denied", NotificationType.ERROR));
+        } catch (Exception e) {
+            Notifications.Bus.notify(new Notification("Plugins notifications", "Error", e.toString(), NotificationType.ERROR));
+        }
+        return result;
+    }
+
+    private void preview() {
+        if (resultsPreview.isVisible()) {
+            resultsPreview.setVisible(false);
+        }
+        previewAlarm.cancelAllRequests();
+        boolean goodRegex = FileChecker.checkRegexp(getFilterAsStr());
+        if (doValidate() == null && FileChecker.checkInfo(inputInfo) && goodRegex) {
+            previewAlarm.addRequest(() -> {
+                ProgressManager.getInstance().run(new Task.Backgroundable(project, "Filtering") {
+                    @Override
+                    public void run(@NotNull ProgressIndicator indicator) {
+                        XmlDiffResult result = filter(indicator, false);
+                        resultsPreview.setText("<html><br>  Filtered count: " + result.filteredCount + "</html>");
+                    }
+                });
+                resultsPreview.setVisible(true);
+            }, 2000);
+        }
+    }
+
+    private void installLayout() {
+        VerticalLayout verticalLayout = new VerticalLayout(2);
+        setLayout(verticalLayout);
+        verticalLayout.addLayoutComponent(null, inspectionResultLabel);
+        verticalLayout.addLayoutComponent(null, inspectionResult);
+        verticalLayout.addLayoutComponent(null, inputInfo);
+        verticalLayout.addLayoutComponent(null, filterLabel);
+        verticalLayout.addLayoutComponent(null, filter);
+        verticalLayout.addLayoutComponent(null, outputLabel);
+        verticalLayout.addLayoutComponent(null, output);
+        verticalLayout.addLayoutComponent(null, resultsPreview);
+    }
 
     @Override
     public void dispose() {

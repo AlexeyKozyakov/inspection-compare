@@ -24,10 +24,12 @@ public class DiffDialog extends DialogWrapper {
         init();
         setTitle("Filter/Diff Inspection Results");
         setModal(false);
-        Disposer.register(getDisposable(), dialogTabs);
         setValidationDelay(100);
-        startTrackingValidation();
         getRootPane().setDefaultButton(getButton(runAction));
+        dialogTabs.getTabAt(0).getLastField().setNextFocusableComponent(getButton(runAction));
+        dialogTabs.getTabAt(1).getLastField().setNextFocusableComponent(getButton(runAction));
+        Disposer.register(getDisposable(), dialogTabs);
+        startTrackingValidation();
     }
 
     @NotNull

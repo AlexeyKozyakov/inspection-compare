@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.regex.Pattern;
 
 public class FileChecker {
     public static void setInfo(JTextField file, JBLabel label) {
@@ -55,5 +56,14 @@ public class FileChecker {
 
     public static boolean checkInfo(JLabel label) {
         return  (label.isVisible() && label.getText().startsWith("one"));
+    }
+
+    public static boolean checkRegexp(String regexp) {
+        try {
+            Pattern.compile(regexp);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }
