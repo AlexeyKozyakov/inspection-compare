@@ -5,7 +5,7 @@
   <vendor email="xelexerx@gmail.com" url="">Alexey Kozyakov</vendor>
 
   <description><![CDATA[
-      <em>Compare your inspection logs exported to xml</em>
+      <em>Compare your offline inspection results</em>
     ]]></description>
 
   <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->

@@ -17,7 +17,6 @@ import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
-import com.intellij.openapi.ui.TextBrowseFolderListener;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.openapi.ui.ValidationInfo;
 import com.intellij.openapi.util.Disposer;
@@ -58,8 +57,8 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
     public FilterPanel(Project project) {
         this.project = project;
         filter = new LanguageTextField(RegExpLanguage.INSTANCE, project, "");
-        inspectionResult.addBrowseFolderListener(new TextBrowseFolderListener(new InspectionChooseDescriptor()));
-        output.addBrowseFolderListener(new TextBrowseFolderListener(new InspectionChooseDescriptor()));
+        inspectionResult.addBrowseFolderListener(null, "Select directory which contains inspection results", project, new InspectionChooseDescriptor());
+        output.addBrowseFolderListener(null, "Select output directory", project, new InspectionChooseDescriptor());
         inputInfo.setVisible(false);
         inputInfo.setFontColor(UIUtil.FontColor.BRIGHTER);
         resultsPreview.setVisible(false);
@@ -67,12 +66,14 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
         inspectionResult.getTextField().getDocument().addDocumentListener(new DocumentAdapter() {
             @Override
             protected void textChanged(DocumentEvent e) {
-                Path input = Paths.get(getInspectionResultAsStr());
-                FileChecker.setInfo(inspectionResult.getTextField(), inputInfo);
-                if (input != null && input.getParent() != null && input.getFileName() != null) {
-                    output.setText(input.getParent().resolve(input.getFileName().toString() + "_filtered").toString());
+                if (!inspectionResult.getText().isEmpty()) {
+                    Path input = Paths.get(getInspectionResultAsStr());
+                    FileChecker.setInfo(inspectionResult.getTextField(), inputInfo);
+                    if (input != null && input.getParent() != null && input.getFileName() != null) {
+                        output.setText(input.getParent().resolve(input.getFileName().toString() + "_filtered").toString());
+                    }
+                    preview();
                 }
-                preview();
             }
         });
         filter.getDocument().addDocumentListener(new DocumentListener() {
@@ -199,14 +200,12 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
     }
 
     private void loadState() {
-        inspectionResult.setText(PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.inspectionResult"));
-        output.setText(PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.output"));
+        inspectionResult.setText(PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.baseline"));
         filter.setText(PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.filter"));
     }
 
     private void saveState() {
-        PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.inspectionResult", inspectionResult.getText());
-        PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.output", output.getText());
+        PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.baseline", inspectionResult.getText());
         PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.filter", filter.getText());
     }
 

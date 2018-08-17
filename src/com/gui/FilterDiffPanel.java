@@ -19,7 +19,6 @@ import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
-import com.intellij.openapi.ui.TextBrowseFolderListener;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.openapi.ui.ValidationInfo;
 import com.intellij.openapi.util.Disposer;
@@ -82,6 +81,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         //hotkeys
         normalizeCheckBox.setMnemonic(KeyEvent.VK_N);
         filterCheckbox.setMnemonic(KeyEvent.VK_F);
+        swapButton.setMnemonic(KeyEvent.VK_S);
         baseInfo.setVisible(false);
         baseInfo.setFontColor(UIUtil.FontColor.BRIGHTER);
         resultsPreview.setVisible(false);
@@ -91,14 +91,11 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         replaceFrom = new LanguageTextField(RegExpLanguage.INSTANCE, project, "");
         replaceTo.setBackground(replaceFrom.getBackground());
         initButton();
-        baseline.setNextFocusableComponent(updated);
-        filterCheckbox.setFocusable(false);
-        normalizeCheckBox.setFocusable(false);
-        baseline.addBrowseFolderListener(new TextBrowseFolderListener(new InspectionChooseDescriptor()));
-        updated.addBrowseFolderListener(new TextBrowseFolderListener(new InspectionChooseDescriptor()));
+        baseline.addBrowseFolderListener(null, "Select directory which contains baseline inspection results", project, new InspectionChooseDescriptor());
+        updated.addBrowseFolderListener(null, "Select directory which contains updated inspection results", project, new InspectionChooseDescriptor());
         addPathListeners();
-        addedWarnings.addBrowseFolderListener(new TextBrowseFolderListener(new InspectionChooseDescriptor()));
-        removedWarnings.addBrowseFolderListener(new TextBrowseFolderListener(new InspectionChooseDescriptor()));
+        addedWarnings.addBrowseFolderListener(null, "Select added warnings output directory", project, new InspectionChooseDescriptor());
+        removedWarnings.addBrowseFolderListener(null, "Select removed warnings output directory", project, new InspectionChooseDescriptor());
         replaceFrom.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void documentChanged(com.intellij.openapi.editor.event.DocumentEvent event) {
@@ -116,6 +113,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         HorizontalLayout checkboxLayout = new HorizontalLayout(30);
         checkboxContainer.add(normalizeCheckBox);
         checkboxContainer.add(filterCheckbox);
+        checkboxContainer.setBorder(BorderFactory.createEmptyBorder(8, 0, 16, 0));
         checkboxContainer.setLayout(checkboxLayout);
         checkboxLayout.addLayoutComponent(normalizeCheckBox, null);
         checkboxLayout.addLayoutComponent(filterCheckbox, null);
@@ -139,8 +137,8 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         Disposer.register(this, updated);
         Disposer.register(this, addedWarnings);
         Disposer.register(this, removedWarnings);
-        init();
         loadState();
+        init();
     }
 
     private void generateOutPaths() {
@@ -267,7 +265,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
                         "Updated warnings count: " + result.updatedProblems + "<br>" +
                         "Added warnings: " + result.added + "<br>" +
                         "Removed warnings: " + result.removed + "<br>" +
-                        "<a href=\"added\">Open added</a>  " +
+                        "<a href=\"added\">Open added</a>&nbsp;&nbsp;&nbsp;&nbsp;" +
                         "<a href=\"removed\">Open removed</a>",
                 NotificationType.INFORMATION, (notification, event) -> {
             if (event.getDescription().equals("added")) {
@@ -306,9 +304,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
     private void saveState() {
         PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.baseline", baseline.getText());
         PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.updated", updated.getText());
-        PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.addedWarnings", addedWarnings.getText());
-        PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.removedWarnings", removedWarnings.getText());
-        PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.diffFilter", filter.getText());
+        PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.filter", filter.getText());
         PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.replaceFrom", replaceFrom.getText());
         PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.replaceTo", replaceTo.getText());
         PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.filterCheckbox", filterCheckbox.isSelected());
@@ -318,9 +314,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
     private void loadState() {
         baseline.setText(PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.baseline"));
         updated.setText(PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.updated"));
-        addedWarnings.setText(PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.addedWarnings"));
-        removedWarnings.setText(PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.removedWarnings"));
-        filter.setText(PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.diffFilter"));
+        filter.setText(PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.filter"));
         replaceFrom.setText(PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.replaceFrom"));
         replaceTo.setText(PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.replaceTo"));
         if (!filter.getText().isEmpty()) {
@@ -385,9 +379,9 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
                         diff(indicator, false);
                         resultsPreview.setText("<html><br>  Added warnings: " + result.added + "<br>" +
                                 "  Removed warnings: " + result.removed + "</html>");
+                        resultsPreview.setVisible(true);
                     }
                 });
-                resultsPreview.setVisible(true);
             }, 2000);
         }
     }
@@ -436,7 +430,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         filterLayout.addLayoutComponent(filterLabel, null);
         filterLayout.addLayoutComponent(filter, null);
         filterContainer.setLayout(filterLayout);
-        filterContainer.setBorder(BorderFactory.createEmptyBorder(8,16,8,1));
+        filterContainer.setBorder(BorderFactory.createEmptyBorder(0,16,16,1));
     }
 
     private void initNormalize() {
@@ -446,7 +440,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         normalizeContainer.add(replaceFrom);
         normalizeContainer.add(replaceToLabel);
         normalizeContainer.add(replaceTo);
-        normalizeContainer.setBorder(BorderFactory.createEmptyBorder(8,16,8,1));
+        normalizeContainer.setBorder(BorderFactory.createEmptyBorder(0,16,16,1));
         VerticalLayout containerLayout = new VerticalLayout(2);
         normalizeContainer.setLayout(containerLayout);
         containerLayout.addLayoutComponent(replaceFromLabel, null);
@@ -463,7 +457,6 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
                 firstField.grabFocus();
             } else {
                 fieldsContainer.setVisible(false);
-                grabFocus();
             }
             preview();
         });
@@ -487,7 +480,6 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
             tmp = getBaseAsStr();
             baseline.setText(getUpdatedAsStr());
             updated.setText(tmp);
-            grabFocus();
         });
         buttonContainer.setLayout(new BorderLayout(5, 5));
         buttonContainer.add(swapButton, BorderLayout.LINE_START);
@@ -497,25 +489,29 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         baseline.getTextField().getDocument().addDocumentListener(new DocumentAdapter() {
             @Override
             protected void textChanged(DocumentEvent e) {
-                basePath = Paths.get(baseline.getText());
-                FileChecker.setInfo(baseline.getTextField(), baseInfo);
-                if (!getUpdatedAsStr().isEmpty()) {
-                    updatedPath = Paths.get(getUpdatedAsStr());
-                    generateOutPaths();
+                if (!getBaseAsStr().isEmpty()) {
+                    basePath = Paths.get(baseline.getText());
+                    FileChecker.setInfo(baseline.getTextField(), baseInfo);
+                    if (!getUpdatedAsStr().isEmpty()) {
+                        updatedPath = Paths.get(getUpdatedAsStr());
+                        generateOutPaths();
+                    }
+                    preview();
                 }
-                preview();
             }
         });
         updated.getTextField().getDocument().addDocumentListener(new DocumentAdapter() {
             @Override
             protected void textChanged(DocumentEvent e) {
-                updatedPath = Paths.get(updated.getText());
-                FileChecker.setInfo(updated.getTextField(), updatedInfo);
-                if (!getBaseAsStr().isEmpty()) {
-                    basePath = Paths.get(getBaseAsStr());
-                    generateOutPaths();
+                if (!getUpdatedAsStr().isEmpty()) {
+                    updatedPath = Paths.get(updated.getText());
+                    FileChecker.setInfo(updated.getTextField(), updatedInfo);
+                    if (!getBaseAsStr().isEmpty()) {
+                        basePath = Paths.get(getBaseAsStr());
+                        generateOutPaths();
+                    }
+                    preview();
                 }
-                preview();
             }
         });
     }

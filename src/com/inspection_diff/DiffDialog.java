@@ -2,6 +2,7 @@ package com.inspection_diff;
 
 import com.gui.DialogTabs;
 
+import com.gui.FilterDiffPanel;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.DialogWrapper;
 import com.intellij.openapi.ui.ValidationInfo;
@@ -11,6 +12,7 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 
 import static com.gui.DialogTab.EXIT;
 
@@ -26,9 +28,15 @@ public class DiffDialog extends DialogWrapper {
         setModal(false);
         setValidationDelay(100);
         getRootPane().setDefaultButton(getButton(runAction));
-        dialogTabs.getTabAt(0).getLastField().setNextFocusableComponent(getButton(runAction));
-        dialogTabs.getTabAt(1).getLastField().setNextFocusableComponent(getButton(runAction));
+        getButton(clearAction).setMnemonic(KeyEvent.VK_C);
         Disposer.register(getDisposable(), dialogTabs);
+        dialogTabs.addChangeListener(e -> {
+            if (dialogTabs.getCurrentTab() instanceof FilterDiffPanel) {
+                getButton(runAction).setText("Diff");
+            } else {
+                getButton(runAction).setText("Filter");
+            }
+        });
         startTrackingValidation();
     }
 
@@ -66,7 +74,7 @@ public class DiffDialog extends DialogWrapper {
     protected class RunAction extends DialogWrapperExitAction {
 
         public RunAction() {
-            super("Run", 0);
+            super("Diff", 0);
         }
 
         @Override
