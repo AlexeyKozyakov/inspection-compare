@@ -523,6 +523,15 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
             tmp = getBaseAsStr();
             baseline.setText(getUpdatedAsStr());
             updated.setText(tmp);
+            if (previewAlarm.getActiveRequestCount() > 0) {
+                previewAlarm.cancelAllRequests();
+                int temp = result.added;
+                result.added = result.removed;
+                result.removed = temp;
+                resultsPreview.setText("<html><br>  Added warnings: " + result.added + "<br>" +
+                        "  Removed warnings: " + result.removed + "</html>");
+                resultsPreview.setVisible(true);
+            }
         });
         buttonContainer.setLayout(new BorderLayout(5, 5));
         buttonContainer.add(swapButton, BorderLayout.LINE_START);
