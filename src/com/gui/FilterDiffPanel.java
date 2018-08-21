@@ -40,12 +40,10 @@ import java.awt.event.ItemEvent;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.nio.file.AccessDeniedException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 
 import static com.intellij.openapi.ui.Messages.OK;
+import static com.util.FileChecker.getPath;
 
 public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
     private Project project;
@@ -234,8 +232,8 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         boolean goodRegex = (!filterCheckbox.isSelected() || FileChecker.checkRegexp(getFilterAsStr())) && (!normalizeCheckBox.isSelected() || FileChecker.checkRegexp(replaceFrom.getText()));
         if (validation == null && !emptyInput && goodRegex) {
             //check if output folders exist and contain files
-            Path addedDir = Paths.get(getAddedWarningsAsStr());
-            Path removedDir = Paths.get(getAddedWarningsAsStr());
+            Path addedDir = getPath(getAddedWarningsAsStr());
+            Path removedDir = getPath(getAddedWarningsAsStr());
             try {
                 if (Files.exists(addedDir) && Files.list(addedDir).count() > 0 || Files.exists(removedDir) && Files.list(removedDir).count() > 0) {
 
@@ -432,8 +430,8 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
     }
 
     private void init() {
-        basePath = Paths.get(getBaseAsStr());
-        updatedPath = Paths.get(getUpdatedAsStr());
+        basePath = getPath(getBaseAsStr());
+        updatedPath = getPath(getUpdatedAsStr());
         checkFolders();
         preview();
     }
@@ -542,10 +540,10 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
             @Override
             protected void textChanged(DocumentEvent e) {
                 if (!getBaseAsStr().isEmpty()) {
-                    basePath = Paths.get(baseline.getText());
+                    basePath = getPath(baseline.getText());
                     FileChecker.setInfo(baseline.getTextField(), baseInfo);
                     if (!getUpdatedAsStr().isEmpty()) {
-                        updatedPath = Paths.get(getUpdatedAsStr());
+                        updatedPath = getPath(getUpdatedAsStr());
                         generateOutPaths();
                     }
                     preview();
@@ -565,10 +563,10 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
             @Override
             protected void textChanged(DocumentEvent e) {
                 if (!getUpdatedAsStr().isEmpty()) {
-                    updatedPath = Paths.get(updated.getText());
+                    updatedPath = getPath(updated.getText());
                     FileChecker.setInfo(updated.getTextField(), updatedInfo);
                     if (!getBaseAsStr().isEmpty()) {
-                        basePath = Paths.get(getBaseAsStr());
+                        basePath = getPath(getBaseAsStr());
                         generateOutPaths();
                     }
                     preview();

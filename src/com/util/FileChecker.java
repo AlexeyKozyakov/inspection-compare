@@ -6,6 +6,7 @@ import com.intellij.ui.components.JBLabel;
 import javax.swing.*;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.regex.Pattern;
@@ -64,6 +65,14 @@ public class FileChecker {
             return true;
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    public static Path getPath(String filename) {
+        try {
+            return Paths.get(filename);
+        } catch (InvalidPathException e) {
+            return null;
         }
     }
 

@@ -37,9 +37,9 @@ import java.io.IOException;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 import static com.intellij.openapi.ui.Messages.OK;
+import static com.util.FileChecker.getPath;
 
 
 public class FilterPanel extends JBPanel implements DialogTab, Disposable {
@@ -74,7 +74,7 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
             @Override
             protected void textChanged(DocumentEvent e) {
                 if (!inspectionResult.getText().isEmpty()) {
-                    Path input = Paths.get(getInspectionResultAsStr());
+                    Path input = getPath(getInspectionResultAsStr());
                     FileChecker.setInfo(inspectionResult.getTextField(), inputInfo);
                     if (input != null && input.getParent() != null && input.getFileName() != null) {
                         output.setText(input.getParent().resolve(input.getFileName().toString() + "_filtered").toString());
@@ -155,10 +155,10 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
                 return new ValidationInfo("Syntax error in regex", filter);
             }
         }
-        if (!getInspectionResultAsStr().isEmpty() && Files.notExists(Paths.get(getInspectionResultAsStr()))) {
+        if (!getInspectionResultAsStr().isEmpty() && Files.notExists(getPath(getInspectionResultAsStr()))) {
             return new ValidationInfo("Folder doesn't exist", inspectionResult.getTextField());
         }
-        if (!getInspectionResultAsStr().isEmpty() && !FileChecker.checkFile(Paths.get(getInspectionResultAsStr()))) {
+        if (!getInspectionResultAsStr().isEmpty() && !FileChecker.checkFile(getPath(getInspectionResultAsStr()))) {
             return new ValidationInfo("Folder doesn't contain inspection results", inspectionResult.getTextField());
         }
         return null;
@@ -171,7 +171,7 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
         boolean goodRegex = FileChecker.checkRegexp(getFilterAsStr());
         if (validation == null && !emptyInput && goodRegex) {
             //check if output folder exists and contains files
-            Path outDir = Paths.get(getOutputAsStr());
+            Path outDir = getPath(getOutputAsStr());
             try {
                 if (Files.exists(outDir) && Files.list(outDir).count() > 0) {
                     int message = Messages.showOkCancelDialog("Some files may be overwritten. Do you want to continue?", "The Output Directory Already Contains Files", null);

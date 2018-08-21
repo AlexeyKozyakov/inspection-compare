@@ -23,13 +23,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import static com.util.FileChecker.getPath;
 
 public class XmlDiff {
 
@@ -45,16 +46,16 @@ public class XmlDiff {
                                                @Nullable String outAdded, @Nullable String outRemoved, @NotNull String filter,
                                                @NotNull String replaceFrom, @NotNull String replaceTo, @Nullable ProgressIndicator indicator) throws IOException, TransformerException, ParserConfigurationException, SAXException, ExecutionException {
         XmlDiffResult compareResult = new XmlDiffResult();
-        Path leftFolder = Paths.get(base);
-        Path rightFolder = Paths.get(updated);
+        Path leftFolder = getPath(base);
+        Path rightFolder = getPath(updated);
         Path outputAdded = null;
         Path outputRemoved = null;
         if (outAdded != null && outRemoved != null) {
-            outputAdded = Paths.get(outAdded);
+            outputAdded = getPath(outAdded);
             if (Files.notExists(outputAdded)) {
                 Files.createDirectories(outputAdded);
             }
-            outputRemoved = Paths.get(outRemoved);
+            outputRemoved = getPath(outRemoved);
             if (Files.notExists(outputRemoved)) {
                 Files.createDirectories(outputRemoved);
             }
@@ -102,11 +103,11 @@ public class XmlDiff {
 
     public static XmlDiffResult filterFolder(@NotNull String inspFolder, @Nullable String outputFolder, String substring, ProgressIndicator indicator) throws IOException, ParserConfigurationException, SAXException, TransformerException, ExecutionException {
         XmlDiffResult res = new XmlDiffResult();
-        Path in = Paths.get(inspFolder);
+        Path in = getPath(inspFolder);
 
         Path out = null;
         if (outputFolder != null) {
-            out = Paths.get(outputFolder);
+            out = getPath(outputFolder);
         }
         if (out != null && Files.notExists(out)) {
             Files.createDirectories(out);
@@ -208,7 +209,7 @@ public class XmlDiff {
     }
 
     private static Map<List<String>, Element> getModel(String filename) throws ParserConfigurationException, SAXException, IOException {
-        Document document = read(Paths.get(filename));
+        Document document = read(getPath(filename));
         NodeList nodes = document.getDocumentElement().getChildNodes();
         Map<List<String>, Element> result = new LinkedHashMap<>();
         Map<List<String>, Integer> duplicateKeys = new HashMap<>();
