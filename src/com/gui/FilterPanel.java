@@ -268,9 +268,9 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
                     public void run(@NotNull ProgressIndicator indicator) {
                         XmlDiffResult result = filter(indicator, false);
                         resultsPreview.setText("<html><br>  Filtered count: " + result.filteredCount + "</html>");
+                        resultsPreview.setVisible(true);
                     }
                 });
-                resultsPreview.setVisible(true);
             }, 2000);
         }
     }

@@ -27,12 +27,13 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class XmlDiff {
 
-    private static LoadingCache<String, Map<List<String>, Element>> myCache = CacheBuilder.newBuilder().maximumSize(10).build(new CacheLoader<String, Map<List<String>, Element>>() {
+    private static LoadingCache<String, Map<List<String>, Element>> myCache = CacheBuilder.newBuilder().maximumSize(10).refreshAfterWrite(1, TimeUnit.MINUTES).build(new CacheLoader<String, Map<List<String>, Element>>() {
 
         @Override
         public Map<List<String>, Element> load(String filename) throws Exception {
@@ -203,7 +204,7 @@ public class XmlDiff {
     }
 
     private static Map<List<String>, Element> getModelFromCache(Path path) throws ExecutionException {
-        return myCache.get(path.toAbsolutePath().toString());
+        return new HashMap<>(myCache.get(path.toAbsolutePath().toString()));
     }
 
     private static Map<List<String>, Element> getModel(String filename) throws ParserConfigurationException, SAXException, IOException {
