@@ -1,6 +1,8 @@
 package com.gui;
 
+import com.intellij.codeEditor.printing.ExportToHTMLSettings;
 import com.intellij.openapi.editor.event.DocumentListener;
+import com.intellij.openapi.fileTypes.PlainTextLanguage;
 import com.intellij.ui.*;
 import com.intellij.ui.components.*;
 import com.intellij.ui.components.panels.HorizontalLayout;
@@ -33,6 +35,7 @@ import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import java.awt.*;
+import java.awt.event.ActionEvent;
 import java.awt.event.ItemEvent;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
@@ -57,7 +60,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
     private JBLabel filterLabel = new JBLabel("Filter by substring:");
     private TextFieldWithBrowseButton baseline = new TextFieldWithBrowseButton();
     private TextFieldWithBrowseButton updated = new TextFieldWithBrowseButton();
-    private LanguageTextField filter;
+    private LanguageTextFieldWithHistory filter;
     private TextFieldWithBrowseButton addedWarnings = new TextFieldWithBrowseButton();
     private TextFieldWithBrowseButton removedWarnings = new TextFieldWithBrowseButton();
     private JBCheckBox normalizeCheckBox = new JBCheckBox();
@@ -68,13 +71,15 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
     private JBPanel normalizeContainer = new JBPanel();
     private JBPanel filterContainer = new JBPanel();
     private JBLabel resultsPreview = new JBLabel();
-    private LanguageTextField replaceFrom;
-    private JBTextField replaceTo = new JBTextField();
+    private LanguageTextFieldWithHistory replaceFrom;
+    private LanguageTextFieldWithHistory replaceTo;
+    private JButton lastRes = new JButton();
     private Path basePath;
     private Path updatedPath;
     private boolean validationFlag;
     private XmlDiffResult result = new XmlDiffResult();
     private Alarm previewAlarm = new Alarm(this);
+    private JBPanel fieldAndButton = new JBPanel(new BorderLayout());
     public FilterDiffPanel(Project project) {
         this.project = project;
         setPreferredSize(new Dimension(800, 540));
@@ -82,13 +87,22 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         normalizeCheckBox.setMnemonic(KeyEvent.VK_N);
         filterCheckbox.setMnemonic(KeyEvent.VK_F);
         swapButton.setMnemonic(KeyEvent.VK_S);
+        lastRes.setText("L");
+        lastRes.setPreferredSize(new Dimension(50, 50));
+        lastRes.setToolTipText("Open folder which contains latest exported results " + "(" + ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY + ")");
+        lastRes.setVisible(false);
+        fieldAndButton.add(baseline);
+        fieldAndButton.add(lastRes, BorderLayout.LINE_END);
         baseInfo.setVisible(false);
         baseInfo.setFontColor(UIUtil.FontColor.BRIGHTER);
         resultsPreview.setVisible(false);
         resultsPreview.setFontColor(UIUtil.FontColor.BRIGHTER);
         updatedInfo.setVisible(false);
         updatedInfo.setFontColor(UIUtil.FontColor.BRIGHTER);
-        replaceFrom = new LanguageTextField(RegExpLanguage.INSTANCE, project, "");
+        replaceFrom = new LanguageTextFieldWithHistoryWithoutHotkeys(10, "Inspection.Compare.Plugin.normalizeHistoryFrom",
+                project, RegExpLanguage.INSTANCE, normalizeContainer);
+        replaceTo = new LanguageTextFieldWithHistoryWithoutHotkeys(10, "Inspection.Compare.Plugin.normalizeHistoryTo",
+                project, PlainTextLanguage.INSTANCE, normalizeContainer);
         replaceTo.setBackground(replaceFrom.getBackground());
         initButton();
         baseline.addBrowseFolderListener(null, "Select directory which contains baseline inspection results", project, new InspectionChooseDescriptor());
@@ -102,9 +116,9 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
                 preview();
             }
         });
-        replaceTo.getDocument().addDocumentListener(new DocumentAdapter() {
+        replaceTo.getDocument().addDocumentListener(new DocumentListener() {
             @Override
-            protected void textChanged(DocumentEvent e) {
+            public void documentChanged(com.intellij.openapi.editor.event.DocumentEvent event) {
                 preview();
             }
         });
@@ -118,7 +132,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         checkboxLayout.addLayoutComponent(normalizeCheckBox, null);
         checkboxLayout.addLayoutComponent(filterCheckbox, null);
         add(baselineLabel);
-        add(baseline);
+        add(fieldAndButton);
         add(baseInfo);
         add(buttonContainer);
         add(updatedLabel);
@@ -138,7 +152,15 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         Disposer.register(this, addedWarnings);
         Disposer.register(this, removedWarnings);
         loadState();
+        if (!ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.isEmpty() && !ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.equals(baseline.getText())) {
+            lastRes.setVisible(true);
+        }
+        lastRes.addActionListener(e -> {
+            baseline.setText(ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY);
+            lastRes.setVisible(false);
+        });
         init();
+
     }
 
     private void generateOutPaths() {
@@ -309,6 +331,9 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.replaceTo", replaceTo.getText());
         PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.filterCheckbox", filterCheckbox.isSelected());
         PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.normalizeCheckbox", normalizeCheckBox.isSelected());
+        filter.addTextAndSave();
+        replaceFrom.addTextAndSave();
+        replaceTo.addTextAndSave();
     }
 
     private void loadState() {
@@ -389,7 +414,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
     private void installLayout() {
         VerticalLayout layout = new VerticalLayout(2);
         layout.addLayoutComponent(baselineLabel, null);
-        layout.addLayoutComponent(baseline, null);
+        layout.addLayoutComponent(fieldAndButton, null);
         layout.addLayoutComponent(baseInfo, null);
         layout.addLayoutComponent(buttonContainer, null);
         layout.addLayoutComponent(updatedLabel, null);
@@ -414,7 +439,9 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
     }
 
     private void initFilter() {
-        filter = new LanguageTextField(RegExpLanguage.INSTANCE, project, "");
+        filter = new LanguageTextFieldWithHistory(10, "Inspection.Compare.Plugin.filterHistory",
+                project, RegExpLanguage.INSTANCE, new JBPanel(new BorderLayout()));
+        filter.addToWrapper();
         filter.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void documentChanged(com.intellij.openapi.editor.event.DocumentEvent event) {
@@ -424,11 +451,11 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         filterCheckbox.setText("Filter");
         addCheckboxListener(filterCheckbox, filterContainer, filter);
         filterContainer.add(filterLabel);
-        filterContainer.add(filter);
+        filterContainer.add(filter.getWrapper());
         filterContainer.setVisible(false);
         VerticalLayout filterLayout = new VerticalLayout(2);
         filterLayout.addLayoutComponent(filterLabel, null);
-        filterLayout.addLayoutComponent(filter, null);
+        filterLayout.addLayoutComponent(filter.getWrapper(), null);
         filterContainer.setLayout(filterLayout);
         filterContainer.setBorder(BorderFactory.createEmptyBorder(0,16,16,1));
     }
@@ -448,6 +475,22 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         containerLayout.addLayoutComponent(replaceToLabel, null);
         containerLayout.addLayoutComponent(replaceTo, null);
         normalizeContainer.setVisible(false);
+        normalizeContainer.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke("UP"), "previous");
+        normalizeContainer.getActionMap().put("previous", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent actionEvent) {
+                replaceFrom.setPreviousTextFromHistory();
+                replaceTo.setPreviousTextFromHistory();
+            }
+        });
+        normalizeContainer.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke("DOWN"), "next");
+        normalizeContainer.getActionMap().put("next", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent actionEvent) {
+                replaceFrom.setNextTextFromHistory();
+                replaceTo.setNextTextFromHistory();
+            }
+        });
     }
 
     private void addCheckboxListener(JBCheckBox checkbox, JBPanel fieldsContainer, LanguageTextField firstField) {
@@ -497,6 +540,15 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
                         generateOutPaths();
                     }
                     preview();
+                }
+                if (!ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.isEmpty() && !ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.equals(baseline.getText())) {
+                    if (!lastRes.isVisible()) {
+                        lastRes.setVisible(true);
+                    }
+                } else {
+                    if (lastRes.isVisible()) {
+                        lastRes.setVisible(false);
+                    }
                 }
             }
         });

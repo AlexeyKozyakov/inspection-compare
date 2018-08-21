@@ -1,5 +1,6 @@
 package com.gui;
 
+import com.intellij.codeEditor.printing.ExportToHTMLSettings;
 import com.intellij.openapi.editor.event.DocumentListener;
 import com.intellij.util.Alarm;
 import com.intellij.util.ui.UIUtil;
@@ -23,7 +24,6 @@ import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.DocumentAdapter;
-import com.intellij.ui.LanguageTextField;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBPanel;
 import org.intellij.lang.regexp.RegExpLanguage;
@@ -32,6 +32,7 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
+import java.awt.*;
 import java.io.IOException;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
@@ -46,17 +47,23 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
     private JBLabel inspectionResultLabel = new JBLabel("Inspection result");
     private JBLabel filterLabel = new JBLabel("Filter");
     private TextFieldWithBrowseButton inspectionResult = new TextFieldWithBrowseButton();
-    private LanguageTextField filter;
+    private LanguageTextFieldWithHistory filter;
     private JBLabel outputLabel = new JBLabel("Output");
     private TextFieldWithBrowseButton output = new TextFieldWithBrowseButton();
     private JBLabel inputInfo = new JBLabel();
     private JBLabel resultsPreview = new JBLabel();
+    private JButton lastInspection = new JButton();
     private boolean validationFlag = false;
     private Alarm previewAlarm = new Alarm(this);
+    private JBPanel buttonContainer = new JBPanel(new BorderLayout());
 
     public FilterPanel(Project project) {
         this.project = project;
-        filter = new LanguageTextField(RegExpLanguage.INSTANCE, project, "");
+        lastInspection.setToolTipText("Open folder which contains latest exported results " + "(" + ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY + ")" );
+        buttonContainer.add(inspectionResult);
+        buttonContainer.add(lastInspection, BorderLayout.LINE_END);
+        filter = new LanguageTextFieldWithHistory(10, "Inspection.Compare.Plugin.filterHistory", project, RegExpLanguage.INSTANCE, new JBPanel(new BorderLayout()));
+        filter.addToWrapper();
         inspectionResult.addBrowseFolderListener(null, "Select directory which contains inspection results", project, new InspectionChooseDescriptor());
         output.addBrowseFolderListener(null, "Select output directory", project, new InspectionChooseDescriptor());
         inputInfo.setVisible(false);
@@ -74,6 +81,15 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
                     }
                     preview();
                 }
+                if (!ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.isEmpty() && !ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.equals(inspectionResult.getText())) {
+                    if (!lastInspection.isVisible()) {
+                        lastInspection.setVisible(true);
+                    }
+                } else {
+                    if (lastInspection.isVisible()) {
+                        lastInspection.setVisible(false);
+                    }
+                }
             }
         });
         filter.getDocument().addDocumentListener(new DocumentListener() {
@@ -83,11 +99,21 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
             }
         });
         loadState();
+        lastInspection.setVisible(false);
+        if (!ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.isEmpty() && !ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.equals(inspectionResult.getText())) {
+            lastInspection.setVisible(true);
+        }
+        lastInspection.setText("L");
+        lastInspection.setPreferredSize(new Dimension(50, 50));
+        lastInspection.addActionListener(e -> {
+            inspectionResult.setText(ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY);
+            lastInspection.setVisible(false);
+        });
         add(inspectionResultLabel);
-        add(inspectionResult);
+        add(buttonContainer);
         add(inputInfo);
         add(filterLabel);
-        add(filter);
+        add(filter.getWrapper());
         add(outputLabel);
         add(output);
         add(resultsPreview);
@@ -207,6 +233,7 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
     private void saveState() {
         PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.baseline", inspectionResult.getText());
         PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.filter", filter.getText());
+        filter.addTextAndSave();
     }
 
     private XmlDiffResult filter(ProgressIndicator indicator, boolean out) {
@@ -252,10 +279,10 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
         VerticalLayout verticalLayout = new VerticalLayout(2);
         setLayout(verticalLayout);
         verticalLayout.addLayoutComponent(null, inspectionResultLabel);
-        verticalLayout.addLayoutComponent(null, inspectionResult);
+        verticalLayout.addLayoutComponent(null, buttonContainer);
         verticalLayout.addLayoutComponent(null, inputInfo);
         verticalLayout.addLayoutComponent(null, filterLabel);
-        verticalLayout.addLayoutComponent(null, filter);
+        verticalLayout.addLayoutComponent(null, filter.getWrapper());
         verticalLayout.addLayoutComponent(null, outputLabel);
         verticalLayout.addLayoutComponent(null, output);
         verticalLayout.addLayoutComponent(null, resultsPreview);

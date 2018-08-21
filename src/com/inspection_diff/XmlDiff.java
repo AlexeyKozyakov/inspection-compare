@@ -1,4 +1,7 @@
 package com.inspection_diff;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.intellij.openapi.progress.ProgressIndicator;
 import org.jetbrains.annotations.NotNull;
 import org.w3c.dom.Document;
@@ -23,14 +26,23 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class XmlDiff {
 
+    private static LoadingCache<String, Map<List<String>, Element>> myCache = CacheBuilder.newBuilder().maximumSize(10).build(new CacheLoader<String, Map<List<String>, Element>>() {
+
+        @Override
+        public Map<List<String>, Element> load(String filename) throws Exception {
+            return getModel(filename);
+        }
+    });
+
     public static XmlDiffResult compareFolders(@NotNull String base, @NotNull String updated,
                                                @Nullable String outAdded, @Nullable String outRemoved, @NotNull String filter,
-                                               @NotNull String replaceFrom, @NotNull String replaceTo, @Nullable ProgressIndicator indicator) throws IOException, TransformerException, ParserConfigurationException, SAXException {
+                                               @NotNull String replaceFrom, @NotNull String replaceTo, @Nullable ProgressIndicator indicator) throws IOException, TransformerException, ParserConfigurationException, SAXException, ExecutionException {
         XmlDiffResult compareResult = new XmlDiffResult();
         Path leftFolder = Paths.get(base);
         Path rightFolder = Paths.get(updated);
@@ -65,21 +77,21 @@ public class XmlDiff {
         return compareResult;
     }
 
-    public static int getWarningsCount(Path file) throws ParserConfigurationException, SAXException, IOException {
-        return filter(read(file), "")[0];
+    public static int getWarningsCount(Path file) throws ParserConfigurationException, SAXException, IOException, ExecutionException {
+        return filter(getModelFromCache(file), "")[0];
     }
 
     public static XmlDiffResult compareFiles(@NotNull Path base,@NotNull Path updated,
                                @Nullable Path outAdded, @Nullable Path outRemoved, @Nullable String filter,
-                                             @NotNull String replaceFrom, @NotNull String replaceTo) throws IOException, TransformerException, ParserConfigurationException, SAXException {
+                                             @NotNull String replaceFrom, @NotNull String replaceTo) throws IOException, TransformerException, ParserConfigurationException, SAXException, ExecutionException {
         XmlDiffResult compareResult = new XmlDiffResult();
-        Document left = read(base);
-        Document right = read(updated);
+        Map<List<String>, Element> leftModel = getModelFromCache(base);
+        Map<List<String>, Element> rightModel = getModelFromCache(updated);
         if(filter != null) {
-             filterBoth(left, right, filter);
+             filterBoth(leftModel, rightModel, filter);
         }
-        Document added = diff(left, right, replaceFrom, replaceTo, compareResult);
-        Document removed = diff(right, left, replaceFrom, replaceTo, null);
+        Document added = diff(leftModel, rightModel, replaceFrom, replaceTo, compareResult);
+        Document removed = diff(rightModel, leftModel, replaceFrom, replaceTo, null);
         if (added != null && outAdded != null)
             write(outAdded, added);
         if (removed != null && outRemoved != null)
@@ -87,7 +99,7 @@ public class XmlDiff {
         return compareResult;
     }
 
-    public static XmlDiffResult filterFolder(@NotNull String inspFolder, @Nullable String outputFolder, String substring, ProgressIndicator indicator) throws IOException, ParserConfigurationException, SAXException, TransformerException {
+    public static XmlDiffResult filterFolder(@NotNull String inspFolder, @Nullable String outputFolder, String substring, ProgressIndicator indicator) throws IOException, ParserConfigurationException, SAXException, TransformerException, ExecutionException {
         XmlDiffResult res = new XmlDiffResult();
         Path in = Paths.get(inspFolder);
 
@@ -106,12 +118,14 @@ public class XmlDiff {
             if (indicator.isCanceled()) {
                 return res;
             }
-            Document doc = read(file);
-            int [] beforeAfter = filter(doc, substring);
+            Map<List<String>, Element> model = getModelFromCache(file);
+            int [] beforeAfter = filter(model, substring);
             res.count += beforeAfter[0];
             res.filteredCount += beforeAfter[1];
             if (out != null) {
-                write(out.resolve(file.getFileName().toString()), doc);
+                if (model.size() > 0) {
+                    write(out.resolve(file.getFileName().toString()), buildDocument(model));
+                }
             }
             indicator.setFraction((double)progress / files.size());
             ++progress;
@@ -125,7 +139,7 @@ public class XmlDiff {
 
     //compare files with the same names
     private static void diffContent(Map<String, Path> leftFiles, Map<String, Path> rightFiles, Path outputAdded, Path outputRemoved, String filter,
-                                    String replaceFrom, String replaceTo, XmlDiffResult compareResult, ProgressIndicator indicator ) throws ParserConfigurationException, TransformerException, SAXException, IOException {
+                                    String replaceFrom, String replaceTo, XmlDiffResult compareResult, ProgressIndicator indicator ) throws ParserConfigurationException, TransformerException, SAXException, IOException, ExecutionException {
         int progress = 0;
         for (Map.Entry<String, Path> file : leftFiles.entrySet()) {
             if (indicator != null && indicator.isCanceled()) {
@@ -142,75 +156,72 @@ public class XmlDiff {
     }
 
     //check which files are added or removed
-    private static void diffFiles(Map<String, Path> leftFiles, Map<String, Path> rightFiles, Path outputAdded, Path outputRemoved, XmlDiffResult compareResult, String filter) throws ParserConfigurationException, SAXException, IOException, TransformerException {
+    private static void diffFiles(Map<String, Path> leftFiles, Map<String, Path> rightFiles, Path outputAdded, Path outputRemoved, XmlDiffResult compareResult, String filter) throws ParserConfigurationException, SAXException, IOException, TransformerException, ExecutionException {
         Map<String, Path> leftSansRight = new HashMap<>(leftFiles);
         leftSansRight.keySet().removeAll(rightFiles.keySet());
         Map<String, Path> rightSansLeft = new HashMap<>(rightFiles);
         rightSansLeft.keySet().removeAll(leftFiles.keySet());
         int problems;
         for (Map.Entry<String, Path> file : rightSansLeft.entrySet()) {
-            Document doc = read(file.getValue());
-            problems = filter(doc, filter)[1];
+            Map<List<String>, Element> model = getModelFromCache(file.getValue());
+            problems = filter(model, filter)[1];
             compareResult.updatedProblems += problems;
             compareResult.added += problems;
             if (outputAdded != null) {
-                write(outputAdded.resolve(file.getKey()), doc);
+                write(outputAdded.resolve(file.getKey()), buildDocument(model));
             }
         }
         for (Map.Entry<String, Path> file : leftSansRight.entrySet()) {
-            Document doc = read(file.getValue());
-            problems = filter(read(file.getValue()), filter)[1];
+            Map<List<String>, Element> model = getModelFromCache(file.getValue());
+            problems = filter(model, filter)[1];
             compareResult.baseProblems += problems;
             compareResult.removed += problems;
             if (outputRemoved != null) {
-                write(outputRemoved.resolve(file.getKey()), doc);
+                write(outputRemoved.resolve(file.getKey()), buildDocument(model));
             }
         }
     }
 
-    private static void filterBoth(Document left, Document right, String substring) {
-        filter(left, substring);
-        filter(right, substring);
+    private static void filterBoth(Map<List<String>, Element> leftModel, Map<List<String>, Element> rightModel, String substring) {
+        filter(leftModel, substring);
+        filter(rightModel, substring);
     }
 
-    private static int [] filter(Document document, String substring) {
-        Element doc = document.getDocumentElement();
-        NodeList nodes = document.getDocumentElement().getChildNodes();
-        int totalCount = 0, filteredCount = 0;
-        for(int i=0; i<nodes.getLength(); i++) {
-            Node node = nodes.item(i);
-            if(node instanceof Element) {
-                Element problem = (Element) node;
-                Element description = (Element) problem.getElementsByTagName("description").item(0);
-                if(description != null) {
-                    totalCount++;
-                    if(!Pattern.compile(substring).matcher(description.getTextContent()).find()) {
-                        doc.removeChild(problem);
-                    } else {
-                        filteredCount++;
-                    }
+    private static int [] filter(Map<List<String>, Element> model, String substring) {
+        int before = model.size();
+        model.entrySet().removeIf(entry -> {
+            Element description = (Element) entry.getValue().getElementsByTagName("description").item(0);
+            if (description != null) {
+                if (!Pattern.compile(substring).matcher(description.getTextContent()).find()) {
+                    return true;
                 }
             }
-        }
-        return new int [] {totalCount, filteredCount};
+            return false;
+        });
+        int after = model.size();
+        return new int [] {before, after};
     }
 
-    private static Map<List<String>, Element> getModel(Document document, String replaceFrom, String replaceTo) {
+    private static Map<List<String>, Element> getModelFromCache(Path path) throws ExecutionException {
+        return myCache.get(path.toAbsolutePath().toString());
+    }
+
+    private static Map<List<String>, Element> getModel(String filename) throws ParserConfigurationException, SAXException, IOException {
+        Document document = read(Paths.get(filename));
         NodeList nodes = document.getDocumentElement().getChildNodes();
         Map<List<String>, Element> result = new LinkedHashMap<>();
         Map<List<String>, Integer> duplicateKeys = new HashMap<>();
         for(int i=0; i<nodes.getLength(); i++) {
             Node node = nodes.item(i);
-            if(node instanceof Element) {
+            if (node instanceof Element) {
                 Element problem = (Element) node;
                 Element file = (Element) problem.getElementsByTagName("file").item(0);
-//                if(file != null && !file.getTextContent().endsWith(".java")) continue;
                 Element pack = (Element) problem.getElementsByTagName("package").item(0);
                 Element line = (Element) problem.getElementsByTagName("line").item(0);
                 Element description = (Element) problem.getElementsByTagName("description").item(0);
-                if(description != null) {
+                if (description != null) {
                     List<String> key = Arrays.asList((file == null) ? "" : file.getTextContent(), (pack == null) ? "" : pack.getTextContent(), (line == null) ? "" : line.getTextContent(),
-                            description.getTextContent().replaceFirst("replaced with.+", "").replaceAll(replaceFrom, replaceTo), String.valueOf(0));
+                            description.getTextContent().replaceFirst("replaced with.+", ""), String.valueOf(0));
                     if (result.containsKey(key)) {
                         List<String> duplicate = key.subList(0, 4);
                         Integer index = duplicateKeys.get(duplicate);
@@ -225,9 +236,13 @@ public class XmlDiff {
         return result;
     }
 
-    private static Document diff(Document left, Document right, String replaceFrom, String replaceTo, XmlDiffResult compareRes) throws ParserConfigurationException {
-        Map<List<String>, Element> leftModel = getModel(left, replaceFrom, replaceTo);
-        Map<List<String>, Element> rightModel = getModel(right, replaceFrom, replaceTo);
+    private static Document diff(Map<List<String>, Element> leftModel, Map<List<String>, Element> rightModel, String replaceFrom, String replaceTo, XmlDiffResult compareRes) throws ParserConfigurationException {
+        leftModel.forEach((key, problem) -> {
+            key.set(3, key.get(3).replaceAll(replaceFrom, replaceTo));
+        });
+        rightModel.forEach((key, problem) -> {
+            key.set(3, key.get(3).replaceAll(replaceFrom, replaceTo));
+        });
         Map<List<String>, Element> leftSansRight = new HashMap<>(leftModel);
         leftSansRight.keySet().removeAll(rightModel.keySet());
         Map<List<String>, Element> rightSansLeft = new HashMap<>(rightModel);
@@ -241,9 +256,13 @@ public class XmlDiff {
         if (rightSansLeft.isEmpty()) {
             return null;
         }
+        return buildDocument(rightSansLeft);
+    }
+
+    private static Document buildDocument(Map<List<String>, Element> model) throws ParserConfigurationException {
         Document res = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
         Element root = res.createElement("problems");
-        for (Element newChild : rightSansLeft.values()) {
+        for (Element newChild : model.values()) {
             Element clone = (Element) newChild.cloneNode(true);
             res.adoptNode(clone);
             root.appendChild(clone);
