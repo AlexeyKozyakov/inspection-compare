@@ -11,6 +11,6 @@ public class LanguageTextFieldWithHistoryWithoutHotkeys extends LanguageTextFiel
     }
 
     @Override
-    protected void addKeyStrokes() {
+protected void addKeyStrokes() {
     }
 }

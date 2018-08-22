@@ -13,7 +13,7 @@ import java.util.Arrays;
 
 public class LanguageTextFieldWithHistory extends LanguageTextField {
     private String myProperty;
-    private int myHistorySize = 0;
+    private int myHistorySize;
     private String [] myHistory;
     private int current = 0;
     private JBPanel wrapper;

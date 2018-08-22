@@ -79,13 +79,13 @@ public class XmlDiff {
         return compareResult;
     }
 
-    public static int getWarningsCount(Path file) throws ParserConfigurationException, SAXException, IOException, ExecutionException {
+    public static int getWarningsCount(Path file) throws ExecutionException {
         return filter(getModelFromCache(file), "")[0];
     }
 
     public static XmlDiffResult compareFiles(@NotNull Path base,@NotNull Path updated,
                                @Nullable Path outAdded, @Nullable Path outRemoved, @Nullable String filter,
-                                             @NotNull String replaceFrom, @NotNull String replaceTo) throws IOException, TransformerException, ParserConfigurationException, SAXException, ExecutionException {
+                                             @NotNull String replaceFrom, @NotNull String replaceTo) throws IOException, TransformerException, ParserConfigurationException, ExecutionException {
         XmlDiffResult compareResult = new XmlDiffResult();
         Map<List<String>, Element> leftModel = getModelFromCache(base);
         Map<List<String>, Element> rightModel = getModelFromCache(updated);
@@ -101,7 +101,7 @@ public class XmlDiff {
         return compareResult;
     }
 
-    public static XmlDiffResult filterFolder(@NotNull String inspFolder, @Nullable String outputFolder, String substring, ProgressIndicator indicator) throws IOException, ParserConfigurationException, SAXException, TransformerException, ExecutionException {
+    public static XmlDiffResult filterFolder(@NotNull String inspFolder, @Nullable String outputFolder, String substring, ProgressIndicator indicator) throws IOException, ParserConfigurationException, TransformerException, ExecutionException {
         XmlDiffResult res = new XmlDiffResult();
         Path in = getPath(inspFolder);
 
@@ -141,7 +141,7 @@ public class XmlDiff {
 
     //compare files with the same names
     private static void diffContent(Map<String, Path> leftFiles, Map<String, Path> rightFiles, Path outputAdded, Path outputRemoved, String filter,
-                                    String replaceFrom, String replaceTo, XmlDiffResult compareResult, ProgressIndicator indicator ) throws ParserConfigurationException, TransformerException, SAXException, IOException, ExecutionException {
+                                    String replaceFrom, String replaceTo, XmlDiffResult compareResult, ProgressIndicator indicator ) throws ParserConfigurationException, TransformerException, IOException, ExecutionException {
         int progress = 0;
         for (Map.Entry<String, Path> file : leftFiles.entrySet()) {
             if (indicator != null && indicator.isCanceled()) {
@@ -158,7 +158,7 @@ public class XmlDiff {
     }
 
     //check which files are added or removed
-    private static void diffFiles(Map<String, Path> leftFiles, Map<String, Path> rightFiles, Path outputAdded, Path outputRemoved, XmlDiffResult compareResult, String filter) throws ParserConfigurationException, SAXException, IOException, TransformerException, ExecutionException {
+    private static void diffFiles(Map<String, Path> leftFiles, Map<String, Path> rightFiles, Path outputAdded, Path outputRemoved, XmlDiffResult compareResult, String filter) throws ParserConfigurationException, IOException, TransformerException, ExecutionException {
         Map<String, Path> leftSansRight = new HashMap<>(leftFiles);
         leftSansRight.keySet().removeAll(rightFiles.keySet());
         Map<String, Path> rightSansLeft = new HashMap<>(rightFiles);
@@ -194,9 +194,7 @@ public class XmlDiff {
         model.entrySet().removeIf(entry -> {
             Element description = (Element) entry.getValue().getElementsByTagName("description").item(0);
             if (description != null) {
-                if (!Pattern.compile(substring).matcher(description.getTextContent()).find()) {
-                    return true;
-                }
+                return !Pattern.compile(substring).matcher(description.getTextContent()).find();
             }
             return false;
         });
