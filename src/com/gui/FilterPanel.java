@@ -136,10 +136,6 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
         getFocusComponent().grabFocus();
     }
 
-    @Override
-    public TextFieldWithBrowseButton getLastField() {
-        return output;
-    }
 
     @Override
     public ValidationInfo doValidate() {

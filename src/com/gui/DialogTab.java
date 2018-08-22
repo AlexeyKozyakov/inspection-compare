@@ -1,6 +1,5 @@
 package com.gui;
 
-import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.openapi.ui.ValidationInfo;
 
 import javax.swing.*;
@@ -12,5 +11,4 @@ public interface DialogTab {
     int run();
     JComponent getFocusComponent();
     void clear();
-    TextFieldWithBrowseButton getLastField();
 }

@@ -31,8 +31,9 @@ public class LanguageTextFieldWithHistory extends LanguageTextField {
     public void setPreviousTextFromHistory() {
         if (myHistory != null) {
             if (!getText().equals(myHistory[current])) {
-                setText(myHistory[myHistory.length - 1]);
-                current = myHistory.length - 1;
+                myHistory[myHistory.length - 1] = getText();
+                setText(myHistory[myHistory.length - 2]);
+                current = myHistory.length - 2;
             } else {
                 current = (current - 1 + myHistory.length) % myHistory.length;
                 setText(myHistory[current]);
@@ -43,8 +44,9 @@ public class LanguageTextFieldWithHistory extends LanguageTextField {
     public void setNextTextFromHistory() {
         if (myHistory != null) {
             if (!getText().equals(myHistory[current])) {
-                setText(myHistory[myHistory.length - 1]);
-                current = myHistory.length - 1;
+                myHistory[myHistory.length - 1] = getText();
+                setText(myHistory[myHistory.length - 2]);
+                current = myHistory.length - 2;
             } else {
                 current = (current + 1) % myHistory.length;
                 setText(myHistory[current]);
@@ -55,19 +57,21 @@ public class LanguageTextFieldWithHistory extends LanguageTextField {
     private void load() {
         String value = PropertiesComponent.getInstance().getValue(myProperty);
         if (value != null) {
-            myHistory = value.split("\n");
-            current = myHistory.length - 1;
+            myHistory = (value + "\n" + " ").split("\n");
+            myHistory[myHistory.length - 1] = "";
+            current = myHistory.length - 2;
         }
     }
 
     public void addTextAndSave() {
-        if (!getText().isEmpty() && (myHistory == null || !getText().equals(myHistory[myHistory.length - 1]))) {
+        if (!getText().isEmpty() && (myHistory == null || !getText().equals(myHistory[myHistory.length - 2]))) {
             String valueToStore;
             if (myHistory != null) {
-                if (myHistory.length + 1 > myHistorySize) {
-                    valueToStore = StringUtil.join(Arrays.copyOfRange(myHistory, 1, myHistory.length), "\n") + "\n" + getText();
+                myHistory[myHistory.length - 1] = getText();
+                if (myHistory.length > myHistorySize) {
+                    valueToStore = StringUtil.join(Arrays.copyOfRange(myHistory, 1, myHistory.length), "\n");
                 } else {
-                    valueToStore = StringUtil.join(myHistory, "\n") + "\n" + getText();
+                    valueToStore = StringUtil.join(myHistory, "\n");
                 }
             } else {
                 valueToStore = getText();

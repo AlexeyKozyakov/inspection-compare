@@ -316,11 +316,6 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         getFocusComponent().grabFocus();
     }
 
-    @Override
-    public TextFieldWithBrowseButton getLastField() {
-        return removedWarnings;
-    }
-
     private void saveState() {
         PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.baseline", baseline.getText());
         PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.updated", updated.getText());

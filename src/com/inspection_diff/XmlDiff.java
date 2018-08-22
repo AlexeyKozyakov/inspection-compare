@@ -239,19 +239,27 @@ public class XmlDiff {
     }
 
     private static Document diff(Map<List<String>, Element> leftModel, Map<List<String>, Element> rightModel, String replaceFrom, String replaceTo, XmlDiffResult compareRes) throws ParserConfigurationException {
-        leftModel.forEach((key, problem) -> {
-            key.set(3, key.get(3).replaceAll(replaceFrom, replaceTo));
-        });
-        rightModel.forEach((key, problem) -> {
-            key.set(3, key.get(3).replaceAll(replaceFrom, replaceTo));
-        });
-        Map<List<String>, Element> leftSansRight = new HashMap<>(leftModel);
-        leftSansRight.keySet().removeAll(rightModel.keySet());
-        Map<List<String>, Element> rightSansLeft = new HashMap<>(rightModel);
-        rightSansLeft.keySet().removeAll(leftModel.keySet());
         if (compareRes != null) {
             compareRes.baseProblems = leftModel.size();
             compareRes.updatedProblems = rightModel.size();
+        }
+        Map<List<String>, Element> leftNormalized = new HashMap<>();
+        leftModel.forEach((key, value) -> {
+            List<String> newKey = new ArrayList<>(key);
+            newKey.set(3, newKey.get(3).replaceAll(replaceFrom, replaceTo));
+            leftNormalized.put(newKey, value);
+        });
+        Map<List<String>, Element> rightNormalized = new HashMap<>();
+        rightModel.forEach((key, value) -> {
+            List<String> newKey = new ArrayList<>(key);
+            newKey.set(3, newKey.get(3).replaceAll(replaceFrom, replaceTo));
+            rightNormalized.put(newKey, value);
+        });
+        Map<List<String>, Element> leftSansRight = new HashMap<>(leftNormalized);
+        leftSansRight.keySet().removeAll(rightNormalized.keySet());
+        Map<List<String>, Element> rightSansLeft = new HashMap<>(rightNormalized);
+        rightSansLeft.keySet().removeAll(leftNormalized.keySet());
+        if (compareRes != null) {
             compareRes.added = rightSansLeft.size();
             compareRes.removed = leftSansRight.size();
         }
