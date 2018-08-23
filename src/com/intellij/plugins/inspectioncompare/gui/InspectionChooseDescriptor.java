@@ -1,4 +1,4 @@
-package com.gui;
+package com.intellij.plugins.inspectioncompare.gui;
 
 import com.intellij.codeInspection.InspectionApplication;
 import com.intellij.icons.AllIcons;
@@ -8,9 +8,9 @@ import com.intellij.openapi.vfs.VirtualFile;
 
 import javax.swing.*;
 
-public class InspectionChooseDescriptor extends FileChooserDescriptor {
+class InspectionChooseDescriptor extends FileChooserDescriptor {
 
-    public InspectionChooseDescriptor() {
+    InspectionChooseDescriptor() {
         super(false, true, false, false, false, false);
     }
 

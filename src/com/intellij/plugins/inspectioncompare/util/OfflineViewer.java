@@ -1,4 +1,4 @@
-package com.util;
+package com.intellij.plugins.inspectioncompare.util;
 
 import com.intellij.analysis.PerformAnalysisInBackgroundOption;
 import com.intellij.codeInspection.InspectionApplication;

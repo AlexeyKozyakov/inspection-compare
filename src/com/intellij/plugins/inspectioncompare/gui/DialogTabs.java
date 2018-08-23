@@ -1,19 +1,19 @@
-package com.gui;
+package com.intellij.plugins.inspectioncompare.gui;
 
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.ui.components.JBTabbedPane;
+import com.intellij.util.ObjectUtils;
 
 import java.awt.*;
 
-public class DialogTabs extends JBTabbedPane implements Disposable {
-    private FilterDiffPanel filterDiffPanel;
-    private FilterPanel filterPanel;
+class DialogTabs extends JBTabbedPane implements Disposable {
+
     public DialogTabs(Project project) {
         super(2);
-        filterDiffPanel = new FilterDiffPanel(project);
-        filterPanel = new FilterPanel(project);
+        FilterDiffPanel filterDiffPanel = new FilterDiffPanel(project);
+        FilterPanel filterPanel = new FilterPanel(project);
         insertTab("Diff", null, filterDiffPanel, "Diff inspection results", 0);
         insertTab("Filter", null, filterPanel, "Filter inspection results", 1);
         Disposer.register(this, filterDiffPanel);
@@ -22,20 +22,7 @@ public class DialogTabs extends JBTabbedPane implements Disposable {
 
     public DialogTab getCurrentTab() {
         Component currentTab = getSelectedComponent();
-        if (currentTab instanceof DialogTab) {
-            return (DialogTab) currentTab;
-        } else {
-            return null;
-        }
-    }
-
-    public DialogTab getTabAt(int index) {
-        Component tab = getComponentAt(index);
-        if (tab instanceof DialogTab) {
-            return (DialogTab) tab;
-        } else {
-            return null;
-        }
+        return ObjectUtils.tryCast(currentTab, DialogTab.class);
     }
 
     @Override

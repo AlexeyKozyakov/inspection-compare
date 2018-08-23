@@ -22,7 +22,7 @@
   </extensions>
 
   <actions>
-    <action class="com.inspection_diff.DiffMenuItem" id="FilterDiffAction" text="Filter/Diff inspection Results..." >
+    <action class="com.intellij.plugins.inspectioncompare.gui.DiffMenuItem" id="FilterDiffAction" text="Filter/Diff inspection Results..." >
       <add-to-group group-id="InspectCodeGroup" anchor="after" relative-to-action="ViewOfflineInspection"/>
     </action>
   </actions>

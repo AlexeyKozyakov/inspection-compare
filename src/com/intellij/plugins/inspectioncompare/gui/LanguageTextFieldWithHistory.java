@@ -1,4 +1,4 @@
-package com.gui;
+package com.intellij.plugins.inspectioncompare.gui;
 
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.lang.Language;
@@ -12,11 +12,11 @@ import java.awt.event.ActionEvent;
 import java.util.Arrays;
 
 public class LanguageTextFieldWithHistory extends LanguageTextField {
-    private String myProperty;
-    private int myHistorySize;
+    private final String myProperty;
+    private final int myHistorySize;
     private String [] myHistory;
     private int current = 0;
-    private JBPanel wrapper;
+    private final JBPanel wrapper;
 
     public LanguageTextFieldWithHistory(int historySize, String property, Project project, Language language, JBPanel wrapper) {
         super(language, project, "");
@@ -87,7 +87,7 @@ public class LanguageTextFieldWithHistory extends LanguageTextField {
         wrapper.add(this);
     }
 
-    protected void addKeyStrokes() {
+    void addKeyStrokes() {
         wrapper.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke("UP"), "previous");
         wrapper.getActionMap().put("previous", new AbstractAction() {
             @Override

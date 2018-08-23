@@ -1,13 +1,13 @@
-package com.gui;
+package com.intellij.plugins.inspectioncompare.gui;
 
 import com.intellij.codeEditor.printing.ExportToHTMLSettings;
 import com.intellij.openapi.editor.event.DocumentListener;
+import com.intellij.plugins.inspectioncompare.diff.XmlDiff;
+import com.intellij.plugins.inspectioncompare.util.OfflineViewer;
 import com.intellij.util.Alarm;
 import com.intellij.util.ui.UIUtil;
-import com.util.FileChecker;
-import com.util.OfflineViewer;
-import com.inspection_diff.XmlDiff;
-import com.inspection_diff.XmlDiffResult;
+import com.intellij.plugins.inspectioncompare.util.FileChecker;
+import com.intellij.plugins.inspectioncompare.diff.XmlDiffResult;
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationType;
@@ -32,34 +32,41 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.TransformerException;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.ExecutionException;
 
 import static com.intellij.openapi.ui.Messages.OK;
-import static com.util.FileChecker.getPath;
+import static com.intellij.plugins.inspectioncompare.util.FileChecker.getPathIfValid;
 
 
 public class FilterPanel extends JBPanel implements DialogTab, Disposable {
-    private Project project;
-    private JBLabel inspectionResultLabel = new JBLabel("Inspection result");
-    private JBLabel filterLabel = new JBLabel("Filter");
-    private TextFieldWithBrowseButton inspectionResult = new TextFieldWithBrowseButton();
-    private LanguageTextFieldWithHistory filter;
-    private JBLabel outputLabel = new JBLabel("Output");
-    private TextFieldWithBrowseButton output = new TextFieldWithBrowseButton();
-    private JBLabel inputInfo = new JBLabel();
-    private JBLabel resultsPreview = new JBLabel();
-    private JButton lastInspection = new JButton();
+    private final Project project;
+    private final JBLabel inspectionResultLabel = new JBLabel("Inspection result");
+    private final JBLabel filterLabel = new JBLabel("Filter");
+    private final TextFieldWithBrowseButton inspectionResult = new TextFieldWithBrowseButton();
+    private final LanguageTextFieldWithHistory filter;
+    private final JBLabel outputLabel = new JBLabel("Output");
+    private final TextFieldWithBrowseButton output = new TextFieldWithBrowseButton();
+    private final JBLabel inputInfo = new JBLabel();
+    private final JBLabel resultsPreview = new JBLabel();
+    private final JButton lastInspection = new JButton();
     private boolean validationFlag = false;
-    private Alarm previewAlarm = new Alarm(this);
-    private JBPanel buttonContainer = new JBPanel(new BorderLayout());
+    private final Alarm previewAlarm = new Alarm(this);
+    private final JBPanel buttonContainer = new JBPanel(new BorderLayout());
+    private Path inputPath;
+    private Path outputPath;
 
-    public FilterPanel(Project project) {
+    FilterPanel(Project project) {
         this.project = project;
-        lastInspection.setToolTipText("Open folder which contains latest exported results " + "(" + ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY + ")" );
+        lastInspection.setToolTipText("Open folder which contains latest exported results " + "(" + ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY + ")");
         buttonContainer.add(inspectionResult);
         buttonContainer.add(lastInspection, BorderLayout.LINE_END);
         filter = new LanguageTextFieldWithHistory(10, "Inspection.Compare.Plugin.filterHistory", project, RegExpLanguage.INSTANCE, new JBPanel(new BorderLayout()));
@@ -74,12 +81,20 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
             @Override
             protected void textChanged(DocumentEvent e) {
                 if (!inspectionResult.getText().isEmpty()) {
-                    Path input = getPath(getInspectionResultAsStr());
-                    FileChecker.setInfo(inspectionResult.getTextField(), inputInfo);
-                    if (input != null && input.getParent() != null && input.getFileName() != null) {
-                        output.setText(input.getParent().resolve(input.getFileName().toString() + "_filtered").toString());
+                    inputPath = getPathIfValid(getInspectionResultAsStr());
+                    try {
+                        FileChecker.setInfo(inspectionResult.getTextField(), inputPath, inputInfo);
+                    } catch (ExecutionException ex) {
+                        Notifications.Bus.notify(new Notification("Plugins notifications", "Error", e.toString(), NotificationType.ERROR));
+                    }
+                    if (inputPath != null && inputPath.getParent() != null && inputPath.getFileName() != null) {
+                        output.setText(inputPath.getParent().resolve(inputPath.getFileName().toString() + "_filtered").toString());
                     }
                     preview();
+                } else {
+                    if (inputInfo.isVisible()) {
+                        inputInfo.setVisible(false);
+                    }
                 }
                 if (!ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.isEmpty() && !ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.equals(inspectionResult.getText())) {
                     if (!lastInspection.isVisible()) {
@@ -89,6 +104,22 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
                     if (lastInspection.isVisible()) {
                         lastInspection.setVisible(false);
                     }
+                }
+            }
+        });
+        inspectionResult.getTextField().getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_L, KeyEvent.ALT_MASK), "latestResult");
+        inspectionResult.getTextField().getActionMap().put("latestResult", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent actionEvent) {
+                lastInspection.doClick();
+            }
+        });
+        inspectionResult.getTextField().setToolTipText("Press Alt+L to select the latest inspection result" + "(" + ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY + ")");
+        output.getTextField().getDocument().addDocumentListener(new DocumentAdapter() {
+            @Override
+            protected void textChanged(DocumentEvent e) {
+                if (!output.getText().isEmpty()) {
+                    outputPath = getPathIfValid(getOutputAsStr());
                 }
             }
         });
@@ -108,6 +139,8 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
         lastInspection.addActionListener(e -> {
             inspectionResult.setText(ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY);
             lastInspection.setVisible(false);
+            inspectionResult.grabFocus();
+            inspectionResult.getTextField().selectAll();
         });
         add(inspectionResultLabel);
         add(buttonContainer);
@@ -151,11 +184,17 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
                 return new ValidationInfo("Syntax error in regex", filter);
             }
         }
-        if (!getInspectionResultAsStr().isEmpty() && Files.notExists(getPath(getInspectionResultAsStr()))) {
+        if (!getInspectionResultAsStr().isEmpty() && inputPath == null) {
+            return new ValidationInfo("Invalid path", inspectionResult.getTextField());
+        }
+        if (!getInspectionResultAsStr().isEmpty() && Files.notExists(inputPath)) {
             return new ValidationInfo("Folder doesn't exist", inspectionResult.getTextField());
         }
-        if (!getInspectionResultAsStr().isEmpty() && !FileChecker.checkFile(getPath(getInspectionResultAsStr()))) {
+        if (!getInspectionResultAsStr().isEmpty() && !FileChecker.checkFile(inputPath)) {
             return new ValidationInfo("Folder doesn't contain inspection results", inspectionResult.getTextField());
+        }
+        if (!getOutputAsStr().isEmpty() && outputPath == null) {
+            return new ValidationInfo("Invalid Path", output.getTextField());
         }
         return null;
     }
@@ -167,9 +206,8 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
         boolean goodRegex = FileChecker.checkRegexp(getFilterAsStr());
         if (validation == null && !emptyInput && goodRegex) {
             //check if output folder exists and contains files
-            Path outDir = getPath(getOutputAsStr());
             try {
-                if (Files.exists(outDir) && Files.list(outDir).count() > 0) {
+                if (Files.exists(outputPath) && Files.list(outputPath).count() > 0) {
                     int message = Messages.showOkCancelDialog("Some files may be overwritten. Do you want to continue?", "The Output Directory Already Contains Files", null);
                     if (message != OK) {
                         return CONTINUE;
@@ -196,15 +234,15 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
         }
     }
 
-    public String getFilterAsStr() {
+    private String getFilterAsStr() {
         return filter.getText();
     }
 
-    public String getInspectionResultAsStr() {
+    private String getInspectionResultAsStr() {
         return inspectionResult.getText();
     }
 
-    public String getOutputAsStr() {
+    private String getOutputAsStr() {
         return output.getText();
     }
 
@@ -236,16 +274,18 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
         XmlDiffResult result = null;
         try {
             if (out) {
-                result = XmlDiff.filterFolder(getInspectionResultAsStr(), getOutputAsStr(), getFilterAsStr(), indicator);
+                result = XmlDiff.filterFolder(inputPath, outputPath, getFilterAsStr(), indicator);
             } else {
-                result = XmlDiff.filterFolder(getInspectionResultAsStr(), null, getFilterAsStr(), indicator);
+                result = XmlDiff.filterFolder(inputPath, null, getFilterAsStr(), indicator);
             }
             if (!indicator.isCanceled() && out) {
                 sendNotification(result);
             }
         } catch (AccessDeniedException e) {
             Notifications.Bus.notify(new Notification("Plugins notifications", "Error", "Access to folder denied", NotificationType.ERROR));
-        } catch (Exception e) {
+        } catch (ParserConfigurationException | TransformerException e) {
+            Notifications.Bus.notify(new Notification("Plugins notifications", "Error in XML parser", e.toString(), NotificationType.ERROR));
+        } catch (IOException | ExecutionException e) {
             Notifications.Bus.notify(new Notification("Plugins notifications", "Error", e.toString(), NotificationType.ERROR));
         }
         return result;
@@ -258,16 +298,14 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
         previewAlarm.cancelAllRequests();
         boolean goodRegex = FileChecker.checkRegexp(getFilterAsStr());
         if (doValidate() == null && FileChecker.checkInfo(inputInfo) && goodRegex) {
-            previewAlarm.addRequest(() -> {
-                ProgressManager.getInstance().run(new Task.Backgroundable(project, "Filtering") {
-                    @Override
-                    public void run(@NotNull ProgressIndicator indicator) {
-                        XmlDiffResult result = filter(indicator, false);
-                        resultsPreview.setText("<html><br>  Filtered count: " + result.filteredCount + "</html>");
-                        resultsPreview.setVisible(true);
-                    }
-                });
-            }, 2000);
+            previewAlarm.addRequest(() -> ProgressManager.getInstance().run(new Task.Backgroundable(project, "Filtering") {
+                @Override
+                public void run(@NotNull ProgressIndicator indicator) {
+                    XmlDiffResult result = filter(indicator, false);
+                    resultsPreview.setText("<html><br>  Filtered count: " + result.filteredCount + "</html>");
+                    resultsPreview.setVisible(true);
+                }
+            }), 2000);
         }
     }
 

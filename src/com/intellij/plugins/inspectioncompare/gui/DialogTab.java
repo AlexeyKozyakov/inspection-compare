@@ -1,4 +1,4 @@
-package com.gui;
+package com.intellij.plugins.inspectioncompare.gui;
 
 import com.intellij.openapi.ui.ValidationInfo;
 

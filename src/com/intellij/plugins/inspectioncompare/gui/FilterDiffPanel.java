@@ -1,16 +1,16 @@
-package com.gui;
+package com.intellij.plugins.inspectioncompare.gui;
 
 import com.intellij.codeEditor.printing.ExportToHTMLSettings;
 import com.intellij.openapi.editor.event.DocumentListener;
 import com.intellij.openapi.fileTypes.PlainTextLanguage;
+import com.intellij.plugins.inspectioncompare.diff.XmlDiff;
+import com.intellij.plugins.inspectioncompare.diff.XmlDiffResult;
+import com.intellij.plugins.inspectioncompare.util.FileChecker;
+import com.intellij.plugins.inspectioncompare.util.OfflineViewer;
 import com.intellij.ui.*;
 import com.intellij.ui.components.*;
 import com.intellij.ui.components.panels.HorizontalLayout;
 import com.intellij.util.Alarm;
-import com.util.FileChecker;
-import com.util.OfflineViewer;
-import com.inspection_diff.XmlDiff;
-import com.inspection_diff.XmlDiffResult;
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationType;
@@ -34,6 +34,8 @@ import org.jetbrains.annotations.NotNull;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.TransformerException;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ItemEvent;
@@ -41,43 +43,49 @@ import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.*;
+import java.util.concurrent.ExecutionException;
 
 import static com.intellij.openapi.ui.Messages.OK;
-import static com.util.FileChecker.getPath;
+import static com.intellij.plugins.inspectioncompare.util.FileChecker.getPathIfValid;
 
 public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
-    private Project project;
-    private JBLabel baselineLabel = new JBLabel("Baseline inspection result");
-    private JBLabel updatedLabel = new JBLabel("Updated inspection result");
-    private JBLabel baseInfo = new JBLabel();
-    private JBLabel updatedInfo = new JBLabel();
-    private JBLabel addedWarningsLabel = new JBLabel("Added warnings output");
-    private JBLabel removedWarningsLabel = new JBLabel("Removed warnings output");
-    private JBLabel replaceFromLabel = new JBLabel("Find what:");
-    private JBLabel replaceToLabel = new JBLabel("Replace with:");
-    private JBLabel filterLabel = new JBLabel("Filter by substring:");
-    private TextFieldWithBrowseButton baseline = new TextFieldWithBrowseButton();
-    private TextFieldWithBrowseButton updated = new TextFieldWithBrowseButton();
+    private final Project project;
+    private final JBLabel baselineLabel = new JBLabel("Baseline inspection result");
+    private final JBLabel updatedLabel = new JBLabel("Updated inspection result");
+    private final JBLabel baseInfo = new JBLabel();
+    private final JBLabel updatedInfo = new JBLabel();
+    private final JBLabel addedWarningsLabel = new JBLabel("Added warnings output");
+    private final JBLabel removedWarningsLabel = new JBLabel("Removed warnings output");
+    private final JBLabel replaceFromLabel = new JBLabel("Find what:");
+    private final JBLabel replaceToLabel = new JBLabel("Replace with:");
+    private final JBLabel filterLabel = new JBLabel("Filter by substring:");
+    private final TextFieldWithBrowseButton baseline = new TextFieldWithBrowseButton();
+    private final TextFieldWithBrowseButton updated = new TextFieldWithBrowseButton();
     private LanguageTextFieldWithHistory filter;
-    private TextFieldWithBrowseButton addedWarnings = new TextFieldWithBrowseButton();
-    private TextFieldWithBrowseButton removedWarnings = new TextFieldWithBrowseButton();
-    private JBCheckBox normalizeCheckBox = new JBCheckBox();
-    private JBCheckBox filterCheckbox = new JBCheckBox();
-    private JButton swapButton = new JButton();
-    private JBPanel buttonContainer = new JBPanel();
-    private JBPanel checkboxContainer = new JBPanel();
-    private JBPanel normalizeContainer = new JBPanel();
-    private JBPanel filterContainer = new JBPanel();
-    private JBLabel resultsPreview = new JBLabel();
-    private LanguageTextFieldWithHistory replaceFrom;
-    private LanguageTextFieldWithHistory replaceTo;
-    private JButton lastRes = new JButton();
+    private final TextFieldWithBrowseButton addedWarnings = new TextFieldWithBrowseButton();
+    private final TextFieldWithBrowseButton removedWarnings = new TextFieldWithBrowseButton();
+    private final JBCheckBox normalizeCheckBox = new JBCheckBox();
+    private final JBCheckBox filterCheckbox = new JBCheckBox();
+    private final JButton swapButton = new JButton();
+    private final JBPanel buttonContainer = new JBPanel();
+    private final JBPanel checkboxContainer = new JBPanel();
+    private final JBPanel normalizeContainer = new JBPanel();
+    private final JBPanel filterContainer = new JBPanel();
+    private final JBLabel resultsPreview = new JBLabel();
+    private final LanguageTextFieldWithHistory replaceFrom;
+    private final LanguageTextFieldWithHistory replaceTo;
+    private final JButton baseLastRes = new JButton();
+    private final JButton updatedLastRes = new JButton();
     private Path basePath;
     private Path updatedPath;
     private boolean validationFlag;
     private XmlDiffResult result = new XmlDiffResult();
-    private Alarm previewAlarm = new Alarm(this);
-    private JBPanel fieldAndButton = new JBPanel(new BorderLayout());
+    private final Alarm previewAlarm = new Alarm(this);
+    private final JBPanel baseFieldAndButton = new JBPanel(new BorderLayout());
+    private final JBPanel updatedFieldAndButton = new JBPanel(new BorderLayout());
+    private Path addedDir;
+    private Path removedDir;
+
     public FilterDiffPanel(Project project) {
         this.project = project;
         setPreferredSize(new Dimension(800, 540));
@@ -85,12 +93,34 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         normalizeCheckBox.setMnemonic(KeyEvent.VK_N);
         filterCheckbox.setMnemonic(KeyEvent.VK_F);
         swapButton.setMnemonic(KeyEvent.VK_S);
-        lastRes.setText("L");
-        lastRes.setPreferredSize(new Dimension(50, 50));
-        lastRes.setToolTipText("Open folder which contains latest exported results " + "(" + ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY + ")");
-        lastRes.setVisible(false);
-        fieldAndButton.add(baseline);
-        fieldAndButton.add(lastRes, BorderLayout.LINE_END);
+        baseLastRes.setText("L");
+        baseLastRes.setPreferredSize(new Dimension(50, 50));
+        baseLastRes.setToolTipText("Open folder which contains latest exported results " + "(" + ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY + ")");
+        updatedLastRes.setText("L");
+        updatedLastRes.setPreferredSize(new Dimension(50, 50));
+        updatedLastRes.setToolTipText("Open folder which contains latest exported results " + "(" + ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY + ")");
+        baseline.getTextField().getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_L, KeyEvent.ALT_MASK), "latestResult");
+        baseline.getTextField().getActionMap().put("latestResult", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent actionEvent) {
+                baseLastRes.doClick();
+            }
+        });
+        baseline.getTextField().setToolTipText("Press Alt+L to select the latest inspection result" + "(" + ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY + ")");
+        updated.getTextField().getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_L, KeyEvent.ALT_MASK), "latestResult");
+        updated.getTextField().getActionMap().put("latestResult", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent actionEvent) {
+                updatedLastRes.doClick();
+            }
+        });
+        updated.getTextField().setToolTipText("Press Alt+L to select the latest inspection result" + "(" + ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY + ")");
+        baseLastRes.setVisible(false);
+        updatedLastRes.setVisible(false);
+        baseFieldAndButton.add(baseline);
+        baseFieldAndButton.add(baseLastRes, BorderLayout.LINE_END);
+        updatedFieldAndButton.add(updated);
+        updatedFieldAndButton.add(updatedLastRes, BorderLayout.LINE_END);
         baseInfo.setVisible(false);
         baseInfo.setFontColor(UIUtil.FontColor.BRIGHTER);
         resultsPreview.setVisible(false);
@@ -130,11 +160,11 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         checkboxLayout.addLayoutComponent(normalizeCheckBox, null);
         checkboxLayout.addLayoutComponent(filterCheckbox, null);
         add(baselineLabel);
-        add(fieldAndButton);
+        add(baseFieldAndButton);
         add(baseInfo);
         add(buttonContainer);
         add(updatedLabel);
-        add(updated);
+        add(updatedFieldAndButton);
         add(updatedInfo);
         add(checkboxContainer);
         add(normalizeContainer);
@@ -150,12 +180,23 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         Disposer.register(this, addedWarnings);
         Disposer.register(this, removedWarnings);
         loadState();
-        if (!ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.isEmpty() && !ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.equals(baseline.getText())) {
-            lastRes.setVisible(true);
+        if (!ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.isEmpty() && !ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.equals(getBaseAsStr())) {
+            baseLastRes.setVisible(true);
         }
-        lastRes.addActionListener(e -> {
+        baseLastRes.addActionListener(e -> {
             baseline.setText(ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY);
-            lastRes.setVisible(false);
+            baseLastRes.setVisible(false);
+            baseline.grabFocus();
+            baseline.getTextField().selectAll();
+        });
+        if (!ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.isEmpty() && !ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.equals(getUpdatedAsStr())) {
+            updatedLastRes.setVisible(true);
+        }
+        updatedLastRes.addActionListener(e -> {
+            updated.setText(ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY);
+            updatedLastRes.setVisible(false);
+            updated.grabFocus();
+            updated.getTextField().selectAll();
         });
         init();
 
@@ -200,10 +241,16 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
                 return new ValidationInfo("Syntax error in regex", replaceFrom);
             }
         }
-        if (!getBaseAsStr().isEmpty() && Files.notExists(basePath)) {
+        if (!getBaseAsStr().isEmpty() && basePath == null) {
+            return new ValidationInfo("Invalid path", baseline.getTextField());
+        }
+        if (!getUpdatedAsStr().isEmpty() && updatedPath == null) {
+            return new ValidationInfo("Invalid path", updated.getTextField());
+        }
+        if (!getBaseAsStr().isEmpty() && (Files.notExists(basePath))) {
             return new ValidationInfo("Baseline folder doesn't exist", baseline.getTextField());
         }
-        if (!getUpdatedAsStr().isEmpty() && Files.notExists(updatedPath)) {
+        if (!getUpdatedAsStr().isEmpty() && (Files.notExists(updatedPath))) {
             return new ValidationInfo("Updated folder doesn't exist", updated.getTextField());
         }
         if (!getBaseAsStr().isEmpty() && !FileChecker.checkFile(basePath)) {
@@ -212,11 +259,14 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         if (!getUpdatedAsStr().isEmpty() && !FileChecker.checkFile(updatedPath)) {
             return new ValidationInfo("Updated folder doesn't contain inspection results", updated.getTextField());
         }
-        if (!getUpdatedAsStr().isEmpty() && !FileChecker.checkFile(updatedPath)) {
-            return new ValidationInfo("Updated folder doesn't contain inspection results", updated.getTextField());
-        }
         if (!getBaseAsStr().isEmpty() && getBaseAsStr().equals(getUpdatedAsStr())) {
             return new ValidationInfo("Choose different baseline and updated folders", baseline.getTextField());
+        }
+        if (!getAddedWarningsAsStr().isEmpty() && addedDir == null) {
+            return new ValidationInfo("Invalid path", addedWarnings.getTextField());
+        }
+        if (!getUpdatedAsStr().isEmpty() && removedDir == null) {
+            return new ValidationInfo("Invalid path", removedWarnings.getTextField());
         }
         if (!getAddedWarningsAsStr().isEmpty() && getAddedWarningsAsStr().equals(getRemovedWarningsAsStr())) {
             return new ValidationInfo("Choose different output folders", addedWarnings.getTextField());
@@ -232,8 +282,6 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         boolean goodRegex = (!filterCheckbox.isSelected() || FileChecker.checkRegexp(getFilterAsStr())) && (!normalizeCheckBox.isSelected() || FileChecker.checkRegexp(replaceFrom.getText()));
         if (validation == null && !emptyInput && goodRegex) {
             //check if output folders exist and contain files
-            Path addedDir = getPath(getAddedWarningsAsStr());
-            Path removedDir = getPath(getAddedWarningsAsStr());
             try {
                 if (Files.exists(addedDir) && Files.list(addedDir).count() > 0 || Files.exists(removedDir) && Files.list(removedDir).count() > 0) {
 
@@ -242,7 +290,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
                         return CONTINUE;
                     }
                 }
-            } catch (AccessDeniedException e) {
+            }catch (AccessDeniedException e) {
                 Notifications.Bus.notify(new Notification("Plugins notifications", "Error", "Access to folder denied", NotificationType.ERROR));
             } catch (IOException e) {
                 Notifications.Bus.notify(new Notification("Plugins notifications", "Error", e.toString(), NotificationType.ERROR));
@@ -263,19 +311,19 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         }
     }
 
-    public String getBaseAsStr() {
+    private String getBaseAsStr() {
         return baseline.getText();
     }
-    public String getUpdatedAsStr() {
+    private String getUpdatedAsStr() {
         return updated.getText();
     }
-    public String getFilterAsStr() {
+    private String getFilterAsStr() {
         return filter.getText();
     }
-    public String getAddedWarningsAsStr() {
+    private String getAddedWarningsAsStr() {
         return addedWarnings.getText();
     }
-    public String getRemovedWarningsAsStr() {
+    private String getRemovedWarningsAsStr() {
         return removedWarnings.getText();
     }
     //send notification with compare results
@@ -317,8 +365,8 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
     }
 
     private void saveState() {
-        PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.baseline", baseline.getText());
-        PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.updated", updated.getText());
+        PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.baseline", getBaseAsStr());
+        PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.updated", getUpdatedAsStr());
         PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.filter", filter.getText());
         PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.replaceFrom", replaceFrom.getText());
         PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.replaceTo", replaceTo.getText());
@@ -344,8 +392,12 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
     }
 
     private void checkFolders(){
-        FileChecker.setInfo(baseline.getTextField(), baseInfo);
-        FileChecker.setInfo(updated.getTextField(), updatedInfo);
+        try {
+            FileChecker.setInfo(baseline.getTextField(), basePath, baseInfo);
+            FileChecker.setInfo(updated.getTextField(), updatedPath, updatedInfo);
+        } catch (ExecutionException e) {
+            Notifications.Bus.notify(new Notification("Plugins notifications", "Error", e.toString(), NotificationType.ERROR));
+        }
 
     }
 
@@ -366,11 +418,11 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
     private void diff(ProgressIndicator indicator, boolean out) {
         try {
             if (out) {
-                result = XmlDiff.compareFolders(getBaseAsStr(), getUpdatedAsStr(), getAddedWarningsAsStr(),
-                        getRemovedWarningsAsStr(), filterCheckbox.isSelected() ? getFilterAsStr() : "", normalizeCheckBox.isSelected() ? replaceFrom.getText() : "",
+                result = XmlDiff.compareFolders(basePath, updatedPath, addedDir,
+                        removedDir, filterCheckbox.isSelected() ? getFilterAsStr() : "", normalizeCheckBox.isSelected() ? replaceFrom.getText() : "",
                         normalizeCheckBox.isSelected() ? replaceTo.getText() : "", indicator);
             } else {
-                result = XmlDiff.compareFolders(getBaseAsStr(), getUpdatedAsStr(), null, null, filterCheckbox.isSelected() ? getFilterAsStr() : "", normalizeCheckBox.isSelected() ? replaceFrom.getText() : "",
+                result = XmlDiff.compareFolders(basePath, updatedPath, null, null, filterCheckbox.isSelected() ? getFilterAsStr() : "", normalizeCheckBox.isSelected() ? replaceFrom.getText() : "",
                         normalizeCheckBox.isSelected() ? replaceTo.getText() : "", indicator);
             }
             if (!indicator.isCanceled() && out) {
@@ -378,7 +430,9 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
             }
         } catch (AccessDeniedException e) {
             Notifications.Bus.notify(new Notification("Plugins notifications", "Error", "Access to folder denied", NotificationType.ERROR));
-        } catch (Exception e) {
+        } catch (ParserConfigurationException | TransformerException e) {
+            Notifications.Bus.notify(new Notification("Plugins notifications", "Error in XML parser", e.toString(), NotificationType.ERROR));
+        } catch (IOException | ExecutionException e) {
             Notifications.Bus.notify(new Notification("Plugins notifications", "Error", e.toString(), NotificationType.ERROR));
         }
     }
@@ -390,28 +444,26 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         previewAlarm.cancelAllRequests();
         boolean goodRegex = (!filterCheckbox.isSelected() || FileChecker.checkRegexp(getFilterAsStr())) && (!normalizeCheckBox.isSelected() || FileChecker.checkRegexp(replaceFrom.getText()));
         if (doValidate() == null && FileChecker.checkInfo(baseInfo) && FileChecker.checkInfo(updatedInfo) && goodRegex) {
-            previewAlarm.addRequest(() -> {
-                ProgressManager.getInstance().run(new Task.Backgroundable(project, "Comparing") {
-                    @Override
-                    public void run(@NotNull ProgressIndicator indicator) {
-                        diff(indicator, false);
-                        resultsPreview.setText("<html><br>  Added warnings: " + result.added + "<br>" +
-                                "  Removed warnings: " + result.removed + "</html>");
-                        resultsPreview.setVisible(true);
-                    }
-                });
-            }, 2000);
+            previewAlarm.addRequest(() -> ProgressManager.getInstance().run(new Task.Backgroundable(project, "Comparing") {
+                @Override
+                public void run(@NotNull ProgressIndicator indicator) {
+                    diff(indicator, false);
+                    resultsPreview.setText("<html><br>  Added warnings: " + result.added + "<br>" +
+                            "  Removed warnings: " + result.removed + "</html>");
+                    resultsPreview.setVisible(true);
+                }
+            }), 2000);
         }
     }
 
     private void installLayout() {
         VerticalLayout layout = new VerticalLayout(2);
         layout.addLayoutComponent(baselineLabel, null);
-        layout.addLayoutComponent(fieldAndButton, null);
+        layout.addLayoutComponent(baseFieldAndButton, null);
         layout.addLayoutComponent(baseInfo, null);
         layout.addLayoutComponent(buttonContainer, null);
         layout.addLayoutComponent(updatedLabel, null);
-        layout.addLayoutComponent(updated, null);
+        layout.addLayoutComponent(updatedFieldAndButton, null);
         layout.addLayoutComponent(updatedInfo, null);
         layout.addLayoutComponent(checkboxContainer, null);
         layout.addLayoutComponent(normalizeContainer, null);
@@ -425,8 +477,6 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
     }
 
     private void init() {
-        basePath = getPath(getBaseAsStr());
-        updatedPath = getPath(getUpdatedAsStr());
         checkFolders();
         preview();
     }
@@ -502,7 +552,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         Image iconImage = null;
         try {
             iconImage = ImageIO.read(getClass().getResource("resources/swap1.png"));
-        } catch (Exception e) {
+        } catch (IOException e) {
             System.err.println("Cannot load button icon");
         }
         if (iconImage != null) {
@@ -535,39 +585,76 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
             @Override
             protected void textChanged(DocumentEvent e) {
                 if (!getBaseAsStr().isEmpty()) {
-                    basePath = getPath(baseline.getText());
-                    FileChecker.setInfo(baseline.getTextField(), baseInfo);
+                    basePath = getPathIfValid(getBaseAsStr());
+                    try {
+                        FileChecker.setInfo(baseline.getTextField(), basePath, baseInfo);
+                    } catch (ExecutionException ex) {
+                        Notifications.Bus.notify(new Notification("Plugins notifications", "Error", e.toString(), NotificationType.ERROR));
+                    }
                     if (!getUpdatedAsStr().isEmpty()) {
-                        updatedPath = getPath(getUpdatedAsStr());
+                        updatedPath = getPathIfValid(getUpdatedAsStr());
                         generateOutPaths();
                     }
                     preview();
-                }
-                if (!ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.isEmpty() && !ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.equals(baseline.getText())) {
-                    if (!lastRes.isVisible()) {
-                        lastRes.setVisible(true);
-                    }
                 } else {
-                    if (lastRes.isVisible()) {
-                        lastRes.setVisible(false);
+                    if (baseInfo.isVisible()) {
+                        baseInfo.setVisible(false);
                     }
                 }
+                setLast(baseline, baseLastRes);
             }
         });
         updated.getTextField().getDocument().addDocumentListener(new DocumentAdapter() {
             @Override
             protected void textChanged(DocumentEvent e) {
                 if (!getUpdatedAsStr().isEmpty()) {
-                    updatedPath = getPath(updated.getText());
-                    FileChecker.setInfo(updated.getTextField(), updatedInfo);
+                    updatedPath = getPathIfValid(getUpdatedAsStr());
+                    try {
+                        FileChecker.setInfo(updated.getTextField(), updatedPath, updatedInfo);
+                    } catch (ExecutionException ex) {
+                        Notifications.Bus.notify(new Notification("Plugins notifications", "Error", e.toString(), NotificationType.ERROR));
+                    }
                     if (!getBaseAsStr().isEmpty()) {
-                        basePath = getPath(getBaseAsStr());
+                        basePath = getPathIfValid(getBaseAsStr());
                         generateOutPaths();
                     }
                     preview();
+                } else {
+                    if (updatedInfo.isVisible()) {
+                        updatedInfo.setVisible(false);
+                    }
+                }
+                setLast(updated, updatedLastRes);
+            }
+        });
+        addedWarnings.getTextField().getDocument().addDocumentListener(new DocumentAdapter() {
+            @Override
+            protected void textChanged(DocumentEvent e) {
+                if (!getAddedWarningsAsStr().isEmpty()) {
+                    addedDir = getPathIfValid(getAddedWarningsAsStr());
                 }
             }
         });
+        removedWarnings.getTextField().getDocument().addDocumentListener(new DocumentAdapter() {
+            @Override
+            protected void textChanged(DocumentEvent e) {
+                if (!getRemovedWarningsAsStr().isEmpty()) {
+                    removedDir = getPathIfValid(getAddedWarningsAsStr());
+                }
+            }
+        });
+    }
+
+    private void setLast(TextFieldWithBrowseButton updated, JButton updatedLastRes) {
+        if (!ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.isEmpty() && !ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.equals(updated.getText())) {
+            if (!updatedLastRes.isVisible()) {
+                updatedLastRes.setVisible(true);
+            }
+        } else {
+            if (updatedLastRes.isVisible()) {
+                updatedLastRes.setVisible(false);
+            }
+        }
     }
 
     @Override

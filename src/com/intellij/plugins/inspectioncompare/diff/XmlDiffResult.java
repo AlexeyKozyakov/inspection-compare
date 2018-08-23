@@ -1,4 +1,4 @@
-package com.inspection_diff;
+package com.intellij.plugins.inspectioncompare.diff;
 
 public class XmlDiffResult {
     public int count;
@@ -8,7 +8,7 @@ public class XmlDiffResult {
     public int added;
     public int removed;
 
-    public void add(XmlDiffResult other) {
+    void add(XmlDiffResult other) {
         count += other.count;
         filteredCount += other.filteredCount;
         baseProblems += other.baseProblems;
