@@ -66,7 +66,11 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
 
     FilterPanel(Project project) {
         this.project = project;
-        lastInspection.setToolTipText("Open folder which contains latest exported results " + "(" + ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY + ")");
+        String lastDir = ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY;
+        if (lastDir == null) {
+            lastDir = "";
+        }
+        lastInspection.setToolTipText("Open folder which contains latest exported results " + "(" + lastDir + ")");
         buttonContainer.add(inspectionResult);
         buttonContainer.add(lastInspection, BorderLayout.LINE_END);
         filter = new LanguageTextFieldWithHistory(10, "Inspection.Compare.Plugin.filterHistory", project, RegExpLanguage.INSTANCE, new JBPanel(new BorderLayout()));
@@ -96,7 +100,7 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
                         inputInfo.setVisible(false);
                     }
                 }
-                if (!ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.isEmpty() && !ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.equals(inspectionResult.getText())) {
+                if (ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY != null && !ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.isEmpty() && !ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.equals(inspectionResult.getText())) {
                     if (!lastInspection.isVisible()) {
                         lastInspection.setVisible(true);
                     }
@@ -114,7 +118,7 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
                 lastInspection.doClick();
             }
         });
-        inspectionResult.getTextField().setToolTipText("Press Alt+L to select the latest inspection result" + "(" + ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY + ")");
+        inspectionResult.getTextField().setToolTipText("Press Alt+L to select the latest inspection result" + "(" + lastDir + ")");
         output.getTextField().getDocument().addDocumentListener(new DocumentAdapter() {
             @Override
             protected void textChanged(DocumentEvent e) {
@@ -131,16 +135,20 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
         });
         loadState();
         lastInspection.setVisible(false);
-        if (!ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.isEmpty() && !ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.equals(inspectionResult.getText())) {
+        if (!lastDir.isEmpty() && !lastDir.equals(inspectionResult.getText())) {
             lastInspection.setVisible(true);
         }
         lastInspection.setText("L");
         lastInspection.setPreferredSize(new Dimension(50, 50));
         lastInspection.addActionListener(e -> {
-            inspectionResult.setText(ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY);
-            lastInspection.setVisible(false);
-            inspectionResult.grabFocus();
-            inspectionResult.getTextField().selectAll();
+            if (lastInspection.isVisible()) {
+                if (ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY != null) {
+                    inspectionResult.setText(ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY);
+                }
+                lastInspection.setVisible(false);
+                inspectionResult.grabFocus();
+                inspectionResult.getTextField().selectAll();
+            }
         });
         add(inspectionResultLabel);
         add(buttonContainer);
@@ -172,6 +180,12 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
 
     @Override
     public ValidationInfo doValidate() {
+        if (!getInspectionResultAsStr().isEmpty() && inputPath == null) {
+            return new ValidationInfo("Invalid path", inspectionResult.getTextField());
+        }
+        if (!getOutputAsStr().isEmpty() && outputPath == null) {
+            return new ValidationInfo("Invalid Path", output.getTextField());
+        }
         //don't show message about empty fields before button is pressed
         if (validationFlag) {
             if (getInspectionResultAsStr().isEmpty()) {
@@ -184,17 +198,11 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
                 return new ValidationInfo("Syntax error in regex", filter);
             }
         }
-        if (!getInspectionResultAsStr().isEmpty() && inputPath == null) {
-            return new ValidationInfo("Invalid path", inspectionResult.getTextField());
-        }
         if (!getInspectionResultAsStr().isEmpty() && Files.notExists(inputPath)) {
             return new ValidationInfo("Folder doesn't exist", inspectionResult.getTextField());
         }
         if (!getInspectionResultAsStr().isEmpty() && !FileChecker.checkFile(inputPath)) {
             return new ValidationInfo("Folder doesn't contain inspection results", inspectionResult.getTextField());
-        }
-        if (!getOutputAsStr().isEmpty() && outputPath == null) {
-            return new ValidationInfo("Invalid Path", output.getTextField());
         }
         return null;
     }

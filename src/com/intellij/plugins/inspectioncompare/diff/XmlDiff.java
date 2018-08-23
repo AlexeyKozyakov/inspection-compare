@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 
 public class XmlDiff {
 
-    private static final LoadingCache<String, Map<List<String>, Element>> myCache = CacheBuilder.newBuilder().maximumSize(10).expireAfterAccess(30, TimeUnit.SECONDS).build(new CacheLoader<String, Map<List<String>, Element>>() {
+    private static final LoadingCache<String, Map<List<String>, Element>> myCache = CacheBuilder.newBuilder().maximumSize(10).expireAfterAccess(20, TimeUnit.SECONDS).build(new CacheLoader<String, Map<List<String>, Element>>() {
 
         @Override
         public Map<List<String>, Element> load(@Nullable  String filename) throws Exception {

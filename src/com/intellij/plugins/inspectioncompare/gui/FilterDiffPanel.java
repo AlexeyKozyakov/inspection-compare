@@ -95,10 +95,14 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         swapButton.setMnemonic(KeyEvent.VK_S);
         baseLastRes.setText("L");
         baseLastRes.setPreferredSize(new Dimension(50, 50));
-        baseLastRes.setToolTipText("Open folder which contains latest exported results " + "(" + ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY + ")");
+        String lastDir = ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY;
+        if (lastDir == null) {
+            lastDir = "";
+        }
+        baseLastRes.setToolTipText("Open folder which contains latest exported results " + "(" + lastDir + ")");
         updatedLastRes.setText("L");
         updatedLastRes.setPreferredSize(new Dimension(50, 50));
-        updatedLastRes.setToolTipText("Open folder which contains latest exported results " + "(" + ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY + ")");
+        updatedLastRes.setToolTipText("Open folder which contains latest exported results " + "(" + lastDir + ")");
         baseline.getTextField().getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_L, KeyEvent.ALT_MASK), "latestResult");
         baseline.getTextField().getActionMap().put("latestResult", new AbstractAction() {
             @Override
@@ -106,7 +110,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
                 baseLastRes.doClick();
             }
         });
-        baseline.getTextField().setToolTipText("Press Alt+L to select the latest inspection result" + "(" + ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY + ")");
+        baseline.getTextField().setToolTipText("Press Alt+L to select the latest inspection result" + "(" + lastDir + ")");
         updated.getTextField().getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_L, KeyEvent.ALT_MASK), "latestResult");
         updated.getTextField().getActionMap().put("latestResult", new AbstractAction() {
             @Override
@@ -114,7 +118,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
                 updatedLastRes.doClick();
             }
         });
-        updated.getTextField().setToolTipText("Press Alt+L to select the latest inspection result" + "(" + ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY + ")");
+        updated.getTextField().setToolTipText("Press Alt+L to select the latest inspection result" + "(" + lastDir + ")");
         baseLastRes.setVisible(false);
         updatedLastRes.setVisible(false);
         baseFieldAndButton.add(baseline);
@@ -180,23 +184,31 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         Disposer.register(this, addedWarnings);
         Disposer.register(this, removedWarnings);
         loadState();
-        if (!ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.isEmpty() && !ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.equals(getBaseAsStr())) {
+        if (!lastDir.isEmpty() && !lastDir.equals(getBaseAsStr())) {
             baseLastRes.setVisible(true);
         }
         baseLastRes.addActionListener(e -> {
-            baseline.setText(ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY);
-            baseLastRes.setVisible(false);
-            baseline.grabFocus();
-            baseline.getTextField().selectAll();
+            if (baseLastRes.isVisible()) {
+                if (ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY != null) {
+                    baseline.setText(ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY);
+                }
+                baseLastRes.setVisible(false);
+                baseline.grabFocus();
+                baseline.getTextField().selectAll();
+            }
         });
-        if (!ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.isEmpty() && !ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.equals(getUpdatedAsStr())) {
+        if (!lastDir.isEmpty() && !lastDir.equals(getUpdatedAsStr())) {
             updatedLastRes.setVisible(true);
         }
         updatedLastRes.addActionListener(e -> {
-            updated.setText(ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY);
-            updatedLastRes.setVisible(false);
-            updated.grabFocus();
-            updated.getTextField().selectAll();
+            if (updatedLastRes.isVisible()) {
+                if (ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY != null) {
+                    updated.setText(ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY);
+                }
+                updatedLastRes.setVisible(false);
+                updated.grabFocus();
+                updated.getTextField().selectAll();
+            }
         });
         init();
 
@@ -220,6 +232,18 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
 
     @Override
     public ValidationInfo doValidate() {
+        if (!getBaseAsStr().isEmpty() && basePath == null) {
+            return new ValidationInfo("Invalid path", baseline.getTextField());
+        }
+        if (!getUpdatedAsStr().isEmpty() && updatedPath == null) {
+            return new ValidationInfo("Invalid path", updated.getTextField());
+        }
+        if (!getAddedWarningsAsStr().isEmpty() && addedDir == null) {
+            return new ValidationInfo("Invalid path", addedWarnings.getTextField());
+        }
+        if (!getUpdatedAsStr().isEmpty() && removedDir == null) {
+            return new ValidationInfo("Invalid path", removedWarnings.getTextField());
+        }
         //don't show message about empty fields before button is pressed
         if (validationFlag) {
             if (getBaseAsStr().isEmpty()) {
@@ -241,12 +265,6 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
                 return new ValidationInfo("Syntax error in regex", replaceFrom);
             }
         }
-        if (!getBaseAsStr().isEmpty() && basePath == null) {
-            return new ValidationInfo("Invalid path", baseline.getTextField());
-        }
-        if (!getUpdatedAsStr().isEmpty() && updatedPath == null) {
-            return new ValidationInfo("Invalid path", updated.getTextField());
-        }
         if (!getBaseAsStr().isEmpty() && (Files.notExists(basePath))) {
             return new ValidationInfo("Baseline folder doesn't exist", baseline.getTextField());
         }
@@ -261,12 +279,6 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         }
         if (!getBaseAsStr().isEmpty() && getBaseAsStr().equals(getUpdatedAsStr())) {
             return new ValidationInfo("Choose different baseline and updated folders", baseline.getTextField());
-        }
-        if (!getAddedWarningsAsStr().isEmpty() && addedDir == null) {
-            return new ValidationInfo("Invalid path", addedWarnings.getTextField());
-        }
-        if (!getUpdatedAsStr().isEmpty() && removedDir == null) {
-            return new ValidationInfo("Invalid path", removedWarnings.getTextField());
         }
         if (!getAddedWarningsAsStr().isEmpty() && getAddedWarningsAsStr().equals(getRemovedWarningsAsStr())) {
             return new ValidationInfo("Choose different output folders", addedWarnings.getTextField());
@@ -475,7 +487,6 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         layout.addLayoutComponent(resultsPreview, null);
         setLayout(layout);
     }
-
     private void init() {
         checkFolders();
         preview();
@@ -646,7 +657,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
     }
 
     private void setLast(TextFieldWithBrowseButton updated, JButton updatedLastRes) {
-        if (!ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.isEmpty() && !ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.equals(updated.getText())) {
+        if (ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY != null && !ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.isEmpty() && !ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.equals(updated.getText())) {
             if (!updatedLastRes.isVisible()) {
                 updatedLastRes.setVisible(true);
             }
