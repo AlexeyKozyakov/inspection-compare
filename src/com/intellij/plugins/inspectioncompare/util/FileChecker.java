@@ -2,7 +2,6 @@ package com.intellij.plugins.inspectioncompare.util;
 
 import com.intellij.plugins.inspectioncompare.diff.XmlDiff;
 import com.intellij.ui.components.JBLabel;
-import org.apache.commons.lang3.concurrent.ConcurrentException;
 
 import javax.swing.*;
 import java.io.IOException;

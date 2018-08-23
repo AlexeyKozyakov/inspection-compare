@@ -639,7 +639,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
             @Override
             protected void textChanged(DocumentEvent e) {
                 if (!getRemovedWarningsAsStr().isEmpty()) {
-                    removedDir = getPathIfValid(getAddedWarningsAsStr());
+                    removedDir = getPathIfValid(getRemovedWarningsAsStr());
                 }
             }
         });
