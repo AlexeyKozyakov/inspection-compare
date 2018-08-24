@@ -78,8 +78,6 @@ public class FileChecker {
     }
 
     /**
-     *
-     * @param filename
      * @return file path if filename can be converted to path, otherwise null
      */
     public static Path getPathIfValid(String filename) {

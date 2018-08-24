@@ -63,13 +63,11 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
     private final JBPanel buttonContainer = new JBPanel(new BorderLayout());
     private Path inputPath;
     private Path outputPath;
+    private final String lastDir;
 
     FilterPanel(Project project) {
         this.project = project;
-        String lastDir = ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY;
-        if (lastDir == null) {
-            lastDir = "";
-        }
+        lastDir = (ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY == null) ? "" : ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY;
         lastInspection.setToolTipText("Open folder which contains latest exported results " + "(" + lastDir + ")");
         buttonContainer.add(inspectionResult);
         buttonContainer.add(lastInspection, BorderLayout.LINE_END);
@@ -100,7 +98,7 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
                         inputInfo.setVisible(false);
                     }
                 }
-                if (ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY != null && !ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.isEmpty() && !ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.equals(inspectionResult.getText())) {
+                if (!lastDir.isEmpty() && !lastDir.equals(inspectionResult.getText())) {
                     if (!lastInspection.isVisible()) {
                         lastInspection.setVisible(true);
                     }
@@ -142,9 +140,7 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
         lastInspection.setPreferredSize(new Dimension(50, 50));
         lastInspection.addActionListener(e -> {
             if (lastInspection.isVisible()) {
-                if (ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY != null) {
-                    inspectionResult.setText(ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY);
-                }
+                inspectionResult.setText(lastDir);
                 lastInspection.setVisible(false);
                 inspectionResult.grabFocus();
                 inspectionResult.getTextField().selectAll();

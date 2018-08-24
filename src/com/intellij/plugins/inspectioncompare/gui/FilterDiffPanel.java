@@ -85,6 +85,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
     private final JBPanel updatedFieldAndButton = new JBPanel(new BorderLayout());
     private Path addedDir;
     private Path removedDir;
+    private final String lastDir;
 
     public FilterDiffPanel(Project project) {
         this.project = project;
@@ -95,10 +96,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         swapButton.setMnemonic(KeyEvent.VK_S);
         baseLastRes.setText("L");
         baseLastRes.setPreferredSize(new Dimension(50, 50));
-        String lastDir = ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY;
-        if (lastDir == null) {
-            lastDir = "";
-        }
+        lastDir = (ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY == null) ? "" : ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY;
         baseLastRes.setToolTipText("Open folder which contains latest exported results " + "(" + lastDir + ")");
         updatedLastRes.setText("L");
         updatedLastRes.setPreferredSize(new Dimension(50, 50));
@@ -189,9 +187,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         }
         baseLastRes.addActionListener(e -> {
             if (baseLastRes.isVisible()) {
-                if (ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY != null) {
-                    baseline.setText(ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY);
-                }
+                baseline.setText(lastDir);
                 baseLastRes.setVisible(false);
                 baseline.grabFocus();
                 baseline.getTextField().selectAll();
@@ -202,9 +198,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         }
         updatedLastRes.addActionListener(e -> {
             if (updatedLastRes.isVisible()) {
-                if (ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY != null) {
-                    updated.setText(ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY);
-                }
+                updated.setText(lastDir);
                 updatedLastRes.setVisible(false);
                 updated.grabFocus();
                 updated.getTextField().selectAll();
@@ -241,7 +235,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         if (!getAddedWarningsAsStr().isEmpty() && addedDir == null) {
             return new ValidationInfo("Invalid path", addedWarnings.getTextField());
         }
-        if (!getUpdatedAsStr().isEmpty() && removedDir == null) {
+        if (!getRemovedWarningsAsStr().isEmpty() && removedDir == null) {
             return new ValidationInfo("Invalid path", removedWarnings.getTextField());
         }
         //don't show message about empty fields before button is pressed
@@ -657,7 +651,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
     }
 
     private void setLast(TextFieldWithBrowseButton updated, JButton updatedLastRes) {
-        if (ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY != null && !ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.isEmpty() && !ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY.equals(updated.getText())) {
+        if (!lastDir.isEmpty() && !lastDir.equals(updated.getText())) {
             if (!updatedLastRes.isVisible()) {
                 updatedLastRes.setVisible(true);
             }
