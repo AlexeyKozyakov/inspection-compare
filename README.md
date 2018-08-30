@@ -7,6 +7,6 @@ General usage instructions:
 On the main menu, choose Analyze | Filter/Diff Inspection Results...
 In the Filter/Diff dialog select the Diff tab if you want to compare the inspection results or select the Filter tab if you want to filter the results by substring.
 
-In the Diff tab, choose baseline and updated directores that contains the results in XML format. Optionally, filter/normalize the results before comparing. Specify the output directoryes to store added and removed warnings in. Click Diff.
+In the Diff tab, specify baseline and updated directores that contains the results in XML format. Optionally, filter/normalize the results before comparing. Specify the output directoryes to store added and removed warnings in. Click Diff.
 
-In the Filter tab, choose directory that also contains results in XML format and specify the filter substring. Specify output directory to store the filtering results in. Click Filter.
+In the Filter tab, specify directory that also contains results in XML format and specify the filter substring. Specify output directory to store the filtering results in. Click Filter.
