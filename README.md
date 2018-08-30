@@ -1,6 +1,5 @@
 # Inspection Compare Plugin
 Plugin for Intellij IDEA. Compare the inspection results you have exported to a directoryes in XML. 
-
 This plugin adds a new "Filter/Diff Inspection Results..." button to the Analyze menu.
 
 General usage instructions:
