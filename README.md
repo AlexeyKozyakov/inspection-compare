@@ -5,8 +5,8 @@ This plugin adds a new "Filter/Diff Inspection Results..." button to the Analyze
 General usage instructions:
 
 On the main menu, choose Analyze | Filter/Diff Inspection Results...
-In the Filter/Diff dialog select the Diff tab if you want to compare inspection results or select the Filter tab if you want to filter the results by substring.
+In the Filter/Diff dialog select the Diff tab if you want to compare the inspection results or select the Filter tab if you want to filter the results by substring.
 
-On the Diff tab, choose baseline and updated directores that contains results in XML format. Optionally, filter/normalize results before compare. Specify the output directoryes to store added and removed warnings in. Click Diff.
+In the Diff tab, choose baseline and updated directores that contains the results in XML format. Optionally, filter/normalize the results before comparing. Specify the output directoryes to store added and removed warnings in. Click Diff.
 
-On the Filter tab, choose directory that also contains results in XML format and specify the filter substring. Specify output directory to store the filtering results in. Click Filter.
+In the Filter tab, choose directory that also contains results in XML format and specify the filter substring. Specify output directory to store the filtering results in. Click Filter.
