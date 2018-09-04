@@ -67,6 +67,8 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
 
     FilterPanel(Project project) {
         this.project = project;
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        int buttonSize =(int) (60 * (screenSize.width / 3840.0));
         lastDir = (ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY == null) ? "" : ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY;
         lastInspection.setToolTipText("Open folder which contains latest exported results " + "(" + lastDir + ")");
         buttonContainer.add(inspectionResult);
@@ -137,7 +139,7 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
             lastInspection.setVisible(true);
         }
         lastInspection.setText("L");
-        lastInspection.setPreferredSize(new Dimension(50, 50));
+        lastInspection.setPreferredSize(new Dimension(buttonSize, buttonSize));
         lastInspection.addActionListener(e -> {
             if (lastInspection.isVisible()) {
                 inspectionResult.setText(lastDir);
@@ -225,6 +227,7 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
             ProgressManager.getInstance().run(new Task.Backgroundable(project, "Filtering") {
                 @Override
                 public void run(@NotNull ProgressIndicator indicator) {
+                    indicator.setIndeterminate(false);
                     filter(indicator, true);
                 }
             });
@@ -305,6 +308,7 @@ public class FilterPanel extends JBPanel implements DialogTab, Disposable {
             previewAlarm.addRequest(() -> ProgressManager.getInstance().run(new Task.Backgroundable(project, "Filtering") {
                 @Override
                 public void run(@NotNull ProgressIndicator indicator) {
+                    indicator.setIndeterminate(false);
                     XmlDiffResult result = filter(indicator, false);
                     resultsPreview.setText("<html><br>  Filtered count: " + result.filteredCount + "</html>");
                     resultsPreview.setVisible(true);

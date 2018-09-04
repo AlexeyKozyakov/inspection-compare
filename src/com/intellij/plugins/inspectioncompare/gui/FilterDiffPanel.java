@@ -94,12 +94,14 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         normalizeCheckBox.setMnemonic(KeyEvent.VK_N);
         filterCheckbox.setMnemonic(KeyEvent.VK_F);
         swapButton.setMnemonic(KeyEvent.VK_S);
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        int buttonSize =(int) (60 * (screenSize.width / 3840.0));
         baseLastRes.setText("L");
-        baseLastRes.setPreferredSize(new Dimension(50, 50));
+        baseLastRes.setPreferredSize(new Dimension(buttonSize, buttonSize));
         lastDir = (ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY == null) ? "" : ExportToHTMLSettings.getInstance(project).OUTPUT_DIRECTORY;
         baseLastRes.setToolTipText("Open folder which contains latest exported results " + "(" + lastDir + ")");
         updatedLastRes.setText("L");
-        updatedLastRes.setPreferredSize(new Dimension(50, 50));
+        updatedLastRes.setPreferredSize(new Dimension(buttonSize, buttonSize));
         updatedLastRes.setToolTipText("Open folder which contains latest exported results " + "(" + lastDir + ")");
         baseline.getTextField().getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_L, KeyEvent.ALT_MASK), "latestResult");
         baseline.getTextField().getActionMap().put("latestResult", new AbstractAction() {
@@ -134,7 +136,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         replaceTo = new LanguageTextFieldWithHistoryWithoutHotkeys(10, "Inspection.Compare.Plugin.normalizeHistoryTo",
                 project, PlainTextLanguage.INSTANCE, normalizeContainer);
         replaceTo.setBackground(replaceFrom.getBackground());
-        initButton();
+        initButton(buttonSize);
         baseline.addBrowseFolderListener(null, "Select directory which contains baseline inspection results", project, new InspectionChooseDescriptor());
         updated.addBrowseFolderListener(null, "Select directory which contains updated inspection results", project, new InspectionChooseDescriptor());
         addPathListeners();
@@ -304,6 +306,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
             ProgressManager.getInstance().run(new Task.Backgroundable(project, "Comparing") {
                 @Override
                 public void run(@NotNull ProgressIndicator indicator) {
+                    indicator.setIndeterminate(false);
                     diff(indicator, true);
                 }
             });
@@ -453,6 +456,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
             previewAlarm.addRequest(() -> ProgressManager.getInstance().run(new Task.Backgroundable(project, "Comparing") {
                 @Override
                 public void run(@NotNull ProgressIndicator indicator) {
+                    indicator.setIndeterminate(false);
                     diff(indicator, false);
                     resultsPreview.setText("<html><br>  Added warnings: " + result.added + "<br>" +
                             "  Removed warnings: " + result.removed + "</html>");
@@ -553,7 +557,7 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         });
     }
 
-    private void initButton() {
+    private void initButton(int size) {
         Image iconImage = null;
         try {
             iconImage = ImageIO.read(getClass().getResource("resources/swap1.png"));
@@ -561,10 +565,10 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
             System.err.println("Cannot load button icon");
         }
         if (iconImage != null) {
-            iconImage = dye((BufferedImage) iconImage, JBColor.foreground()).getScaledInstance(30, 38, Image.SCALE_DEFAULT);
+            iconImage = dye((BufferedImage) iconImage, JBColor.foreground()).getScaledInstance((int)(size * 0.6), (int)(size * 0.8), Image.SCALE_DEFAULT);
             swapButton.setIcon(new ImageIcon(iconImage));
         }
-        swapButton.setPreferredSize(new Dimension(50, 50));
+        swapButton.setPreferredSize(new Dimension(size, size));
         swapButton.setToolTipText("Swap input folders");
         swapButton.addActionListener(actionEvent -> {
             String tmp;
