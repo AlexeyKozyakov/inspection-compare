@@ -148,9 +148,9 @@ public class XmlDiff {
 
     //check which files are added or removed
     private static void diffFiles(Map<String, Path> leftFiles, Map<String, Path> rightFiles, Path outputAdded, Path outputRemoved, XmlDiffResult compareResult, String filter) throws ParserConfigurationException, IOException, TransformerException, ExecutionException {
-        Map<String, Path> leftSansRight = new HashMap<>(leftFiles);
+        Map<String, Path> leftSansRight = new LinkedHashMap<>(leftFiles);
         leftSansRight.keySet().removeAll(rightFiles.keySet());
-        Map<String, Path> rightSansLeft = new HashMap<>(rightFiles);
+        Map<String, Path> rightSansLeft = new LinkedHashMap<>(rightFiles);
         rightSansLeft.keySet().removeAll(leftFiles.keySet());
         int problems;
         for (Map.Entry<String, Path> file : rightSansLeft.entrySet()) {
@@ -192,7 +192,7 @@ public class XmlDiff {
     }
 
     private static Map<List<String>, Element> getModelFromCache(Path path) throws ExecutionException {
-        return new HashMap<>(myCache.get(path.toAbsolutePath().toString()));
+        return new LinkedHashMap<>(myCache.get(path.toAbsolutePath().toString()));
     }
 
     private static Map<List<String>, Element> getModel(String filename) throws ParserConfigurationException, SAXException, IOException {
@@ -230,21 +230,21 @@ public class XmlDiff {
             compareRes.baseProblems = leftModel.size();
             compareRes.updatedProblems = rightModel.size();
         }
-        Map<List<String>, Element> leftNormalized = new HashMap<>();
+        Map<List<String>, Element> leftNormalized = new LinkedHashMap<>();
         leftModel.forEach((key, value) -> {
             List<String> newKey = new ArrayList<>(key);
             newKey.set(3, newKey.get(3).replaceAll(replaceFrom, replaceTo));
             leftNormalized.put(newKey, value);
         });
-        Map<List<String>, Element> rightNormalized = new HashMap<>();
+        Map<List<String>, Element> rightNormalized = new LinkedHashMap<>();
         rightModel.forEach((key, value) -> {
             List<String> newKey = new ArrayList<>(key);
             newKey.set(3, newKey.get(3).replaceAll(replaceFrom, replaceTo));
             rightNormalized.put(newKey, value);
         });
-        Map<List<String>, Element> leftSansRight = new HashMap<>(leftNormalized);
+        Map<List<String>, Element> leftSansRight = new LinkedHashMap<>(leftNormalized);
         leftSansRight.keySet().removeAll(rightNormalized.keySet());
-        Map<List<String>, Element> rightSansLeft = new HashMap<>(rightNormalized);
+        Map<List<String>, Element> rightSansLeft = new LinkedHashMap<>(rightNormalized);
         rightSansLeft.keySet().removeAll(leftNormalized.keySet());
         if (compareRes != null) {
             compareRes.added = rightSansLeft.size();
