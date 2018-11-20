@@ -8,7 +8,6 @@ import com.intellij.codeInspection.offline.OfflineProblemDescriptor;
 import com.intellij.codeInspection.offlineViewer.OfflineViewParseUtil;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ReadAction;
-import com.intellij.openapi.fileEditor.impl.LoadTextUtil;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
@@ -16,9 +15,11 @@ import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VfsUtil;
+import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -44,11 +45,12 @@ public class OfflineViewer {
                         if (inspectionFile.isDirectory()) continue;
                         final String shortName = inspectionFile.getNameWithoutExtension();
                         final String extension = inspectionFile.getExtension();
+                        File ioFile = VfsUtilCore.virtualToIoFile(inspectionFile);
                         if (shortName.equals(InspectionApplication.DESCRIPTIONS)) {
-                            profileName[0] = ReadAction.compute(() -> OfflineViewParseUtil.parseProfileName(LoadTextUtil.loadText(inspectionFile).toString()));
+                            profileName[0] = ReadAction.compute(() -> OfflineViewParseUtil.parseProfileName(ioFile));
                         }
                         else if ("xml".equals(extension)) {
-                            resMap.put(shortName, ReadAction.compute(() -> OfflineViewParseUtil.parse(LoadTextUtil.loadText(inspectionFile).toString())));
+                            resMap.put(shortName, ReadAction.compute(() -> OfflineViewParseUtil.parse(ioFile)));
                         }
                     }
                 }
